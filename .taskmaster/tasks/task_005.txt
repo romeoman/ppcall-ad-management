@@ -1,0 +1,94 @@
+# Task ID: 5
+# Title: Develop Keyword Expansion and Categorization Module
+# Status: pending
+# Dependencies: 2, 3, 4
+# Priority: high
+# Description: Create module to expand seed keywords using APIs and categorize them based on user inputs
+# Details:
+1. Create processors/keyword_processor.py with the following functions:
+
+```python
+from src.api_integration.data4seo import Data4SEOClient
+from src.api_integration.serp_api import SerpApiClient
+from src.data_models import Keyword
+import logging
+
+class KeywordProcessor:
+    def __init__(self, data4seo_client, serp_client):
+        self.data4seo_client = data4seo_client
+        self.serp_client = serp_client
+    
+    def expand_seed_keywords(self, seed_keywords):
+        """Expand seed keywords using API data"""
+        expanded_keywords = []
+        
+        for seed in seed_keywords:
+            try:
+                # Get suggestions from Data4SEO
+                data4seo_suggestions = self.data4seo_client.expand_keywords(seed['Keyword'])
+                
+                # Get suggestions from SERP API as backup/additional source
+                serp_suggestions = self.serp_client.get_keyword_suggestions(seed['Keyword'])
+                
+                # Combine and deduplicate suggestions
+                all_suggestions = self._process_suggestions(
+                    data4seo_suggestions, 
+                    serp_suggestions,
+                    seed['Category']
+                )
+                
+                expanded_keywords.extend(all_suggestions)
+                
+            except Exception as e:
+                logging.error(f"Error expanding keyword '{seed['Keyword']}': {e}")
+        
+        return expanded_keywords
+    
+    def _process_suggestions(self, data4seo_suggestions, serp_suggestions, category):
+        """Process and deduplicate suggestions from multiple sources"""
+        # Implementation details for combining results
+        # ...
+        
+    def combine_with_locations(self, keywords, locations):
+        """Combine keywords with locations (cities and zip codes)"""
+        combined_keywords = []
+        
+        for keyword in keywords:
+            for location in locations:
+                # Create city combinations
+                if 'City' in location and location['City']:
+                    combined_keywords.append(Keyword(
+                        term=f"{keyword.term} in {location['City']}",
+                        category=keyword.category,
+                        volume=keyword.volume,
+                        cpc=keyword.cpc,
+                        competition=keyword.competition,
+                        location=location['City']
+                    ))
+                    
+                # Create zip code combinations
+                if 'Zip' in location and location['Zip']:
+                    combined_keywords.append(Keyword(
+                        term=f"{keyword.term} {location['Zip']}",
+                        category=keyword.category,
+                        volume=keyword.volume,
+                        cpc=keyword.cpc,
+                        competition=keyword.competition,
+                        location=f"ZIP {location['Zip']}"
+                    ))
+        
+        return combined_keywords
+    
+    def enrich_keywords_with_metrics(self, keywords):
+        """Add search volume, CPC, and competition data to keywords"""
+        # Implementation for batching keywords and fetching metrics
+        # ...
+```
+
+2. Implement logic to categorize keywords based on user-defined categories
+3. Add functionality to filter out irrelevant keywords
+4. Implement batching for API calls to handle large keyword sets
+5. Add caching to avoid redundant API calls for the same keywords
+
+# Test Strategy:
+Test keyword expansion with various seed keywords. Verify location combinations work correctly with different formats. Test categorization logic with edge cases. Ensure metrics enrichment handles API failures gracefully. Verify deduplication works correctly. Test with mock API responses to ensure consistent behavior.

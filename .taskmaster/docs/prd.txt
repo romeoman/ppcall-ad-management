@@ -1,0 +1,208 @@
+## PROJECT: PPC Keyword Automator - Automated Campaign Management System
+
+## OVERVIEW
+A Python-based command-line tool for automating PPC keyword research and campaign setup for home services affiliates running Google Ads campaigns. The system emphasizes reusability across multiple projects/niches, with each campaign stored in isolated project folders for easy recreation and updates.
+
+## TARGET USERS
+- Affiliate marketers in home services sector (plumbing, electrical, HVAC)
+- Google Ads campaign managers needing rapid keyword research and organization
+- PPC professionals managing multiple niches/locations simultaneously
+
+## CORE OBJECTIVES
+- Automate keyword expansion and categorization for scalability
+- Enable project reusability - clone and adapt campaigns across niches
+- Integrate competition data from SpyFu to identify gaps and opportunities
+- Generate ready-to-use CSV files for direct Google Ads import
+- Complete full campaign setup in under 10 minutes per project
+- Support 100+ keywords/categories per campaign
+
+## KEY FEATURES
+
+### 1. PROJECT MANAGEMENT SYSTEM
+- Create isolated project folders for each campaign (e.g., projects/plumbing_campaign/)
+- Project structure with inputs/, configs/, outputs/ subdirectories
+- Clone existing projects for new niches with adapted configurations
+- Support for project updates without recreation from scratch
+- Version control compatibility for tracking changes
+
+### 2. CLI INTERFACE WITH SUBCOMMANDS
+- Main commands: create, research, generate, analyze, update, export, clone
+- Interactive prompts guide users through each stage
+- Example: python main.py create <project_name>
+- Built-in help system via --help flags
+- Error handling with helpful messages
+
+### 3. KEYWORD RESEARCH AND EXPANSION
+- Input seed keywords and categories via CSV/TXT files
+- Connect to Data4SEO and SERP APIs for metrics
+- Fetch search volume, competition scores, CPC estimates
+- Expand keywords with location combinations
+- Categorize keywords (emergency plumbing, toilet repairs, water cleanup)
+- Output categorized keywords in structured CSVs
+
+### 4. NEGATIVE KEYWORD GENERATION
+- Auto-generate standard negatives (free, DIY, cheap)
+- Accept custom negative keywords via CLI prompts
+- Integrate with keyword lists to avoid overlaps
+- Maintain niche-specific negative lists
+- Export as dedicated negatives.csv file
+
+### 5. AD GROUP ORGANIZATION
+- Combine services with cities and zip codes
+- Generate combinations: service-city, service-zip
+- Create one ad group per combination type
+- Support match types: broad, phrase, exact
+- Export as ad_groups.csv with proper Google Ads formatting
+
+### 6. COMPETITION ANALYSIS
+- Import SpyFu CSV exports for competitor data
+- Analyze keyword overlaps and gaps
+- Identify competitor keywords not in user's list
+- Generate recommendations for keyword additions
+- Output competition_report.csv with insights
+
+### 7. LANDING PAGE SCRAPING
+- Input competitor URLs from SpyFu or manual lists
+- Use FireCrawl API for copy extraction
+- Scrape headlines, CTAs, body text
+- Export scraped_copy.csv for inspiration
+- Handle rate limiting and retries
+
+### 8. DATA EXPORT AND CONSOLIDATION
+- Generate all outputs as CSV files
+- Create consolidated ZIP for easy sharing
+- Log summaries (e.g., "500 keywords generated")
+- Maintain consistent column formatting for Google Ads
+
+## TECHNICAL REQUIREMENTS
+
+### CORE ARCHITECTURE
+- Python 3.10+ with type hints
+- Modular pipeline: Input → Processing → API Integration → Output
+- Pydantic models for data validation
+- Command-line interface using argparse or click
+- Environment variables for API key storage
+
+### FILE STRUCTURE
+```
+ppc_keyword_automator/
+├── src/
+│   ├── models/         # Pydantic schemas
+│   ├── api/           # API connectors
+│   ├── core/          # Business logic
+│   ├── cli/           # Command interface
+│   └── utils/         # Helpers
+├── projects/          # Campaign folders
+├── configs/           # Default configurations
+├── tests/            # Unit tests
+└── main.py           # Entry point
+```
+
+### API INTEGRATIONS
+- Data4SEO API for keyword metrics
+- SERP API for search data
+- FireCrawl API for web scraping
+- Handle rate limits and retries with tenacity
+- Batch API calls for efficiency
+
+### DATA MODELS
+- KeywordSchema: term, volume, category, location, cpc
+- AdGroupSchema: name, keywords[], match_type
+- NegativeKeywordSchema: keyword, reason
+- ProjectConfig: name, niche, categories[], locations[]
+
+## USER WORKFLOWS
+
+### NEW CAMPAIGN SETUP
+1. Run: python main.py create plumbing_campaign
+2. CLI prompts for niche categories, seed keywords, locations
+3. System creates project folder structure
+4. Populates default configurations
+
+### KEYWORD RESEARCH
+1. Run: python main.py research plumbing_campaign  
+2. Prompts: "Fetch from Data4SEO?", "Include zip codes?"
+3. Expands seeds, fetches metrics
+4. Updates inputs/ folder with results
+
+### AD GROUP GENERATION
+1. Run: python main.py generate plumbing_campaign
+2. Prompts: "Add custom negatives?", "Match types?"
+3. Creates service-location combinations
+4. Outputs ad_groups.csv and negatives.csv
+
+### COMPETITION ANALYSIS
+1. Run: python main.py analyze plumbing_campaign
+2. Prompts: "Path to SpyFu CSV?", "Scrape URLs?"
+3. Analyzes competitor data
+4. Generates competition insights
+
+### PROJECT UPDATE
+1. Run: python main.py update plumbing_campaign
+2. Prompts: "Update section?", "New inputs?"
+3. Modifies existing project files
+4. Maintains data consistency
+
+### PROJECT CLONING
+1. Run: python main.py clone old_project new_project
+2. Prompts: "Adapt categories?"
+3. Copies configurations and inputs
+4. Ready for new niche customization
+
+## PERFORMANCE REQUIREMENTS
+- Handle 500+ keywords per run
+- Complete full workflow in <10 minutes
+- Support batch processing for API calls
+- Implement caching for repeated API requests
+- Graceful error handling with recovery
+
+## DATA VALIDATION
+- Validate all inputs with Pydantic models
+- Check for duplicate keywords across categories
+- Verify location data format (city, zip)
+- Validate API responses before processing
+- Ensure CSV output compatibility with Google Ads
+
+## ERROR HANDLING
+- Retry failed API calls with exponential backoff
+- Log all errors with context
+- Provide user-friendly error messages
+- Allow partial completion with clear status
+- Support resume functionality for interrupted runs
+
+## TESTING REQUIREMENTS
+- Unit tests for all core modules
+- Integration tests for API connections
+- Validation tests for data models
+- CLI command tests
+- Performance tests for large datasets
+
+## DOCUMENTATION NEEDS
+- README with setup instructions
+- API configuration guide
+- Command reference with examples
+- Troubleshooting guide
+- Sample input/output files
+
+## SUCCESS METRICS
+- Time to complete full campaign: <10 minutes
+- Keyword expansion ratio: 10x seed keywords
+- Project reusability: 5+ clones without code changes
+- CSV import success rate: 100% Google Ads compatibility
+- User satisfaction: Minimal manual intervention required
+
+## FUTURE ENHANCEMENTS
+- Web UI for non-technical users
+- Real-time bid management integration
+- Direct Google Ads API upload
+- Machine learning for keyword suggestions
+- Automated A/B testing setup
+
+## DEPENDENCIES AND CONSTRAINTS
+- Requires API keys for Data4SEO, SERP, FireCrawl
+- Python 3.10+ environment
+- Internet connection for API calls
+- Sufficient API credits/budget
+- CSV file format limitations
+- No real-time tracking (handled by ClickFlare/Ringba separately)
+

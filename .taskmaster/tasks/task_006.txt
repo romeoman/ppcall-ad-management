@@ -1,0 +1,99 @@
+# Task ID: 6
+# Title: Implement Negative Keywords Generator
+# Status: pending
+# Dependencies: 3, 5
+# Priority: medium
+# Description: Create module to generate negative keywords automatically and process user-provided negative keywords
+# Details:
+1. Create processors/negative_keyword_processor.py with the following functionality:
+
+```python
+from src.data_models import NegativeKeyword
+import logging
+
+class NegativeKeywordProcessor:
+    def __init__(self):
+        # Default negative keywords by category
+        self.default_negatives = {
+            'general': [
+                {'term': 'free', 'reason': 'No monetization potential'},
+                {'term': 'diy', 'reason': 'Do-it-yourself searches'},
+                {'term': 'cheap', 'reason': 'Low-value customers'}
+            ],
+            'emergency plumbing': [
+                {'term': 'training', 'reason': 'Educational content'},
+                {'term': 'jobs', 'reason': 'Job seekers'},
+                {'term': 'salary', 'reason': 'Job information'}
+            ],
+            'water cleanup': [
+                {'term': 'guide', 'reason': 'Informational content'},
+                {'term': 'youtube', 'reason': 'Video content seekers'}
+            ],
+            'toilet repairs': [
+                {'term': 'parts', 'reason': 'Parts shoppers, not service seekers'},
+                {'term': 'manual', 'reason': 'Looking for product manuals'}
+            ]
+        }
+    
+    def generate_negative_keywords(self, categories, custom_negatives=None):
+        """Generate negative keywords based on categories and custom inputs"""
+        negatives = []
+        
+        # Add default negatives for selected categories
+        for category in categories:
+            if category in self.default_negatives:
+                for neg in self.default_negatives[category]:
+                    negatives.append(NegativeKeyword(
+                        term=neg['term'],
+                        reason=neg['reason']
+                    ))
+        
+        # Add general negatives for all campaigns
+        for neg in self.default_negatives['general']:
+            negatives.append(NegativeKeyword(
+                term=neg['term'],
+                reason=neg['reason']
+            ))
+        
+        # Add custom negatives if provided
+        if custom_negatives:
+            for neg in custom_negatives:
+                negatives.append(NegativeKeyword(
+                    term=neg['term'],
+                    reason=neg.get('reason', 'Custom negative keyword')
+                ))
+        
+        # Deduplicate
+        unique_negatives = {}
+        for neg in negatives:
+            if neg.term not in unique_negatives:
+                unique_negatives[neg.term] = neg
+        
+        return list(unique_negatives.values())
+    
+    def check_keyword_conflicts(self, keywords, negative_keywords):
+        """Check for conflicts between keywords and negative keywords"""
+        conflicts = []
+        
+        neg_terms = [neg.term.lower() for neg in negative_keywords]
+        
+        for keyword in keywords:
+            kw_lower = keyword.term.lower()
+            for neg_term in neg_terms:
+                if neg_term in kw_lower:
+                    conflicts.append({
+                        'keyword': keyword.term,
+                        'negative': neg_term,
+                        'resolution': 'Remove keyword or adjust negative'
+                    })
+        
+        return conflicts
+```
+
+2. Implement industry-specific negative keyword lists for home services
+3. Add functionality to detect conflicts between keywords and negatives
+4. Create methods to suggest additional negatives based on keyword analysis
+5. Implement export functionality for Google Ads-compatible negative keyword lists
+
+# Test Strategy:
+Test generation of negative keywords for different categories. Verify conflict detection works with various keyword patterns. Test deduplication of negative keywords. Ensure custom negatives are properly integrated. Test with edge cases like empty inputs and special characters.

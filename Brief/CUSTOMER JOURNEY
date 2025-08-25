@@ -1,0 +1,43 @@
+# Customer Journey for PPC Keyword Automator
+
+This document outlines the user journey for affiliates using the PPC Keyword Automator. It emphasizes reusability: The app supports multiple projects (e.g., campaigns in different niches like plumbing or electrical services). Each project is self-contained in its own folder, allowing easy recreation or updates without starting from scratch. The journey is CLI-driven for flexibility, with interactive prompts to guide inputs based on the scenario.
+
+## Key Principles
+- **Reusability**: Project folders store configs, inputs, and outputs. Clone or recreate for new niches.
+- **CLI Focus**: No UI; use commands like `python main.py create plumbing_campaign` for actions.
+- **Interactivity**: CLI asks questions (e.g., "Enter seed keywords?", Add project file to <project_name>.) to adapt to needs.
+- **Phases**: Divided into Setup, Research/Generation, Update, and Export/Review.
+
+## User Persona
+- **Primary User**: Affiliate marketer running Google Ads for home services.
+- **Goals**: Quickly research keywords, generate ad groups/negatives, analyze competition, and export CSVs for multiple campaigns.
+- **Pain Points Addressed**: Avoid manual repetition; enable easy switching between projects without code changes.
+
+## Journey Map
+
+The journey is visualized in a table for clarity, showing stages, actions, tools involved, and outcomes. Users can loop back (e.g., update after initial setup).
+
+| Stage | Description | User Actions | CLI Interactions | Outcomes |
+|-------|-------------|--------------|------------------|----------|
+| **1. Project Setup** | Start a new campaign or niche. Create a dedicated folder to isolate data. | Decide on niche (e.g., "emergency plumbing"). Provide initial inputs like API keys if new. | Run `python main.py create <project_name>`. CLI prompts: "Enter niche categories (comma-separated)?", "Path to seed keywords file?", "Add cities/zips CSV?". | New folder created (e.g., `projects/plumbing_campaign/`) with subdirs: inputs/, configs/, outputs/. Default configs populated (e.g., YAML for categories). |
+| **2. Keyword Research & Expansion** | Expand seeds into categorized keywords, fetch metrics via APIs. Reusable for any niche by loading project configs. | Upload/input seeds, categories, locations. | Run `python main.py research <project_name>`. Prompts: "Fetch from Data4SEO? (y/n)", "Include zip codes? (y/n)". | Updated inputs/ folder with expanded keywords CSV. Logs show API results. Ready for ad groups. |
+| **3. Ad Group & Negative Generation** | Combine services with locations; generate negatives. Adaptable via project-specific files. | Review/edit combinations if needed. | Run `python main.py generate <project_name>`. Prompts: "Add custom negatives? (list)", "Match types? (broad/phrase/exact)". | Outputs CSVs in outputs/ (e.g., ad_groups.csv, negatives.csv). Organized by category/location. |
+| **4. Competition Analysis & Scraping** | Analyze SpyFu CSVs; scrape landing pages. Reuse for competitors in the niche. | Provide SpyFu CSV or URLs. | Run `python main.py analyze <project_name>`. Prompts: "Path to SpyFu CSV?", "Scrape URLs? (y/n)". | Generates competition_report.csv and scraped_copy.csv in outputs/. Insights integrated into keyword lists. |
+| **5. Update & Iteration** | Modify an existing project (e.g., add new cities or refresh data). Prevents recreating from scratch. | Identify changes (e.g., new keywords). | Run `python main.py update <project_name>`. Prompts: "Update section? (keywords/adgroups/analysis)", "New inputs?". | Overwrites or appends files in the project folder. Versioning optional via git or backups. |
+| **6. Export & Review** | Finalize outputs for Google Ads import. Review across projects. | Check CSVs; export all. | Run `python main.py export <project_name>`. No prompts; aggregates all CSVs. | Consolidated ZIP or folder of CSVs. Logs summary (e.g., "500 keywords generated"). |
+| **7. Project Recreation** | Start a new project based on an existing one (e.g., clone for a new niche). | Select template project. | Run `python main.py clone <old_project> <new_project>`. Prompts: "Adapt categories? (y/n)". | New folder with copied configs/inputs, ready for tweaks. Ensures consistency across niches. |
+
+## Touchpoints & Support
+- **Entry Point**: Always start with CLI commands from the root directory.
+- **Error Handling**: CLI provides helpful messages (e.g., "Project not found; create first?").
+- **Documentation Access**: In-app help via `python main.py --help` or reference docs/ folder.
+- **Exit Points**: After any stage, user can pause and resume later by rerunning commands.
+
+## Metrics for Success
+- Time Savings: Complete a full journey in <10 minutes per project.
+- Reusability Score: Easily clone 5+ projects without code changes.
+- User Feedback Loop: Logs and prompts allow iteration without frustration.
+
+This journey ensures the app is not "one-and-done" but a scalable tool for ongoing campaigns. For customizations, edit project configs directly.
+
+---

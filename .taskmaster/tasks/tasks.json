@@ -1,0 +1,222 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Structure and Environment",
+        "description": "Initialize the project repository with proper structure, virtual environment, and dependency management",
+        "details": "1. Create project directory structure:\n   - src/\n     - input_parser/\n     - data_models/\n     - api_integration/\n     - processors/\n     - output_generator/\n   - tests/\n   - data/\n     - input/\n     - output/\n2. Initialize virtual environment using poetry or virtualenv\n3. Create requirements.txt with dependencies:\n   - pydantic\n   - pandas\n   - requests\n   - python-dotenv\n   - tenacity\n4. Setup .env file template for API keys\n5. Create .gitignore file for Python projects\n6. Initialize logging configuration\n7. Create main.py entry point with basic CLI structure using argparse",
+        "testStrategy": "Verify project structure is created correctly. Ensure virtual environment activates properly. Confirm all dependencies install without conflicts. Test basic CLI with --help flag to ensure argument parser is working.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Implement Input Parser Module",
+        "description": "Create module to parse and validate user inputs including seed keywords, categories, locations, and SpyFu CSVs",
+        "details": "1. Create input_parser module with the following components:\n   - parse_seed_keywords(file_path): Parse TXT/CSV file with seed keywords\n   - parse_categories(file_path): Parse CSV with categories\n   - parse_locations(file_path): Parse CSV with cities and zip codes\n   - parse_spyfu_data(file_path): Parse SpyFu competition CSV\n   - parse_competitor_urls(file_path): Parse TXT list of competitor URLs\n\n2. Use pandas for CSV parsing and implement error handling for malformed inputs\n\n3. Example implementation for parse_seed_keywords:\n```python\ndef parse_seed_keywords(file_path):\n    \"\"\"Parse seed keywords from a CSV or TXT file.\"\"\"\n    if file_path.endswith('.csv'):\n        try:\n            df = pd.read_csv(file_path)\n            # Validate expected columns\n            if not all(col in df.columns for col in ['Keyword', 'Category']):\n                raise ValueError(\"CSV must contain 'Keyword' and 'Category' columns\")\n            return df.to_dict('records')\n        except Exception as e:\n            logging.error(f\"Error parsing seed keywords CSV: {e}\")\n            raise\n    elif file_path.endswith('.txt'):\n        try:\n            with open(file_path, 'r') as f:\n                keywords = [line.strip() for line in f if line.strip()]\n            # Assume all keywords are in 'general' category if from TXT\n            return [{'Keyword': kw, 'Category': 'general'} for kw in keywords]\n        except Exception as e:\n            logging.error(f\"Error parsing seed keywords TXT: {e}\")\n            raise\n    else:\n        raise ValueError(\"Seed keywords file must be CSV or TXT\")\n```",
+        "testStrategy": "Create test files with valid and invalid inputs for each parser function. Test with various file formats (CSV, TXT). Verify error handling for missing files, malformed data, and unexpected columns. Ensure output data structures match expected formats for downstream processing.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create Data Models with Pydantic",
+        "description": "Implement Pydantic models for data validation and structure throughout the application",
+        "details": "1. Create data_models module with the following Pydantic models:\n\n```python\nfrom pydantic import BaseModel, Field\nfrom typing import List, Optional\n\nclass Keyword(BaseModel):\n    term: str\n    category: str\n    volume: Optional[int] = None\n    cpc: Optional[float] = None\n    competition: Optional[float] = None\n    location: Optional[str] = None\n\nclass NegativeKeyword(BaseModel):\n    term: str\n    reason: str\n\nclass AdGroup(BaseModel):\n    name: str\n    keywords: List[str]\n    match_type: str = Field(..., pattern='^(broad|phrase|exact)$')\n\nclass CompetitorKeyword(BaseModel):\n    term: str\n    volume: Optional[int] = None\n    cpc: Optional[float] = None\n    overlap: bool = False\n    recommendation: str = \"\"\n\nclass ScrapedCopy(BaseModel):\n    url: str\n    headline: Optional[str] = None\n    body_snippet: Optional[str] = None\n    cta: Optional[str] = None\n```\n\n2. Implement validation methods for each model\n3. Create factory methods to convert between pandas DataFrames and Pydantic models\n4. Add custom validators where needed (e.g., ensuring CPC values are positive)",
+        "testStrategy": "Create unit tests for each Pydantic model. Test validation with valid and invalid data. Verify custom validators work correctly. Test conversion between DataFrames and model instances. Ensure models handle edge cases like empty strings, None values, and type conversions.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Implement API Integration Layer",
+        "description": "Create connectors for Data4SEO, SERP, and FireCrawl APIs to fetch keyword data and scrape landing pages",
+        "details": "1. Create api_integration module with the following components:\n   - data4seo.py: Connector for Data4SEO API\n   - serp_api.py: Connector for SERP API\n   - firecrawl.py: Connector for FireCrawl API\n\n2. Implement base API client with retry logic using tenacity:\n```python\nfrom tenacity import retry, stop_after_attempt, wait_exponential\nimport requests\nimport logging\n\nclass BaseAPIClient:\n    def __init__(self, api_key):\n        self.api_key = api_key\n        self.session = requests.Session()\n    \n    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))\n    def _make_request(self, method, endpoint, params=None, data=None, headers=None):\n        \"\"\"Make API request with retry logic\"\"\"\n        try:\n            response = self.session.request(\n                method=method,\n                url=endpoint,\n                params=params,\n                json=data,\n                headers=headers\n            )\n            response.raise_for_status()\n            return response.json()\n        except requests.exceptions.RequestException as e:\n            logging.error(f\"API request failed: {e}\")\n            raise\n```\n\n3. Implement Data4SEO client for keyword research:\n```python\nclass Data4SEOClient(BaseAPIClient):\n    BASE_URL = \"https://api.data4seo.com/v1\"\n    \n    def __init__(self, api_key):\n        super().__init__(api_key)\n        self.headers = {\n            \"Authorization\": f\"Bearer {self.api_key}\",\n            \"Content-Type\": \"application/json\"\n        }\n    \n    def get_keyword_data(self, keywords):\n        \"\"\"Get search volume, CPC, and competition for keywords\"\"\"\n        endpoint = f\"{self.BASE_URL}/keywords_data\"\n        data = {\"keywords\": keywords}\n        return self._make_request(\"POST\", endpoint, data=data, headers=self.headers)\n    \n    def expand_keywords(self, seed_keyword):\n        \"\"\"Get keyword suggestions based on seed keyword\"\"\"\n        endpoint = f\"{self.BASE_URL}/keyword_suggestions\"\n        data = {\"keyword\": seed_keyword}\n        return self._make_request(\"POST\", endpoint, data=data, headers=self.headers)\n```\n\n4. Implement similar clients for SERP API and FireCrawl\n5. Add batch processing to handle API rate limits\n6. Implement caching to avoid redundant API calls",
+        "testStrategy": "Create mock responses for each API. Test retry logic with simulated failures. Verify correct handling of API rate limits. Test batch processing with large keyword sets. Ensure proper error handling for API-specific error codes. Test caching mechanism to confirm it prevents redundant calls.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Develop Keyword Expansion and Categorization Module",
+        "description": "Create module to expand seed keywords using APIs and categorize them based on user inputs",
+        "details": "1. Create processors/keyword_processor.py with the following functions:\n\n```python\nfrom src.api_integration.data4seo import Data4SEOClient\nfrom src.api_integration.serp_api import SerpApiClient\nfrom src.data_models import Keyword\nimport logging\n\nclass KeywordProcessor:\n    def __init__(self, data4seo_client, serp_client):\n        self.data4seo_client = data4seo_client\n        self.serp_client = serp_client\n    \n    def expand_seed_keywords(self, seed_keywords):\n        \"\"\"Expand seed keywords using API data\"\"\"\n        expanded_keywords = []\n        \n        for seed in seed_keywords:\n            try:\n                # Get suggestions from Data4SEO\n                data4seo_suggestions = self.data4seo_client.expand_keywords(seed['Keyword'])\n                \n                # Get suggestions from SERP API as backup/additional source\n                serp_suggestions = self.serp_client.get_keyword_suggestions(seed['Keyword'])\n                \n                # Combine and deduplicate suggestions\n                all_suggestions = self._process_suggestions(\n                    data4seo_suggestions, \n                    serp_suggestions,\n                    seed['Category']\n                )\n                \n                expanded_keywords.extend(all_suggestions)\n                \n            except Exception as e:\n                logging.error(f\"Error expanding keyword '{seed['Keyword']}': {e}\")\n        \n        return expanded_keywords\n    \n    def _process_suggestions(self, data4seo_suggestions, serp_suggestions, category):\n        \"\"\"Process and deduplicate suggestions from multiple sources\"\"\"\n        # Implementation details for combining results\n        # ...\n        \n    def combine_with_locations(self, keywords, locations):\n        \"\"\"Combine keywords with locations (cities and zip codes)\"\"\"\n        combined_keywords = []\n        \n        for keyword in keywords:\n            for location in locations:\n                # Create city combinations\n                if 'City' in location and location['City']:\n                    combined_keywords.append(Keyword(\n                        term=f\"{keyword.term} in {location['City']}\",\n                        category=keyword.category,\n                        volume=keyword.volume,\n                        cpc=keyword.cpc,\n                        competition=keyword.competition,\n                        location=location['City']\n                    ))\n                    \n                # Create zip code combinations\n                if 'Zip' in location and location['Zip']:\n                    combined_keywords.append(Keyword(\n                        term=f\"{keyword.term} {location['Zip']}\",\n                        category=keyword.category,\n                        volume=keyword.volume,\n                        cpc=keyword.cpc,\n                        competition=keyword.competition,\n                        location=f\"ZIP {location['Zip']}\"\n                    ))\n        \n        return combined_keywords\n    \n    def enrich_keywords_with_metrics(self, keywords):\n        \"\"\"Add search volume, CPC, and competition data to keywords\"\"\"\n        # Implementation for batching keywords and fetching metrics\n        # ...\n```\n\n2. Implement logic to categorize keywords based on user-defined categories\n3. Add functionality to filter out irrelevant keywords\n4. Implement batching for API calls to handle large keyword sets\n5. Add caching to avoid redundant API calls for the same keywords",
+        "testStrategy": "Test keyword expansion with various seed keywords. Verify location combinations work correctly with different formats. Test categorization logic with edge cases. Ensure metrics enrichment handles API failures gracefully. Verify deduplication works correctly. Test with mock API responses to ensure consistent behavior.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Implement Negative Keywords Generator",
+        "description": "Create module to generate negative keywords automatically and process user-provided negative keywords",
+        "details": "1. Create processors/negative_keyword_processor.py with the following functionality:\n\n```python\nfrom src.data_models import NegativeKeyword\nimport logging\n\nclass NegativeKeywordProcessor:\n    def __init__(self):\n        # Default negative keywords by category\n        self.default_negatives = {\n            'general': [\n                {'term': 'free', 'reason': 'No monetization potential'},\n                {'term': 'diy', 'reason': 'Do-it-yourself searches'},\n                {'term': 'cheap', 'reason': 'Low-value customers'}\n            ],\n            'emergency plumbing': [\n                {'term': 'training', 'reason': 'Educational content'},\n                {'term': 'jobs', 'reason': 'Job seekers'},\n                {'term': 'salary', 'reason': 'Job information'}\n            ],\n            'water cleanup': [\n                {'term': 'guide', 'reason': 'Informational content'},\n                {'term': 'youtube', 'reason': 'Video content seekers'}\n            ],\n            'toilet repairs': [\n                {'term': 'parts', 'reason': 'Parts shoppers, not service seekers'},\n                {'term': 'manual', 'reason': 'Looking for product manuals'}\n            ]\n        }\n    \n    def generate_negative_keywords(self, categories, custom_negatives=None):\n        \"\"\"Generate negative keywords based on categories and custom inputs\"\"\"\n        negatives = []\n        \n        # Add default negatives for selected categories\n        for category in categories:\n            if category in self.default_negatives:\n                for neg in self.default_negatives[category]:\n                    negatives.append(NegativeKeyword(\n                        term=neg['term'],\n                        reason=neg['reason']\n                    ))\n        \n        # Add general negatives for all campaigns\n        for neg in self.default_negatives['general']:\n            negatives.append(NegativeKeyword(\n                term=neg['term'],\n                reason=neg['reason']\n            ))\n        \n        # Add custom negatives if provided\n        if custom_negatives:\n            for neg in custom_negatives:\n                negatives.append(NegativeKeyword(\n                    term=neg['term'],\n                    reason=neg.get('reason', 'Custom negative keyword')\n                ))\n        \n        # Deduplicate\n        unique_negatives = {}\n        for neg in negatives:\n            if neg.term not in unique_negatives:\n                unique_negatives[neg.term] = neg\n        \n        return list(unique_negatives.values())\n    \n    def check_keyword_conflicts(self, keywords, negative_keywords):\n        \"\"\"Check for conflicts between keywords and negative keywords\"\"\"\n        conflicts = []\n        \n        neg_terms = [neg.term.lower() for neg in negative_keywords]\n        \n        for keyword in keywords:\n            kw_lower = keyword.term.lower()\n            for neg_term in neg_terms:\n                if neg_term in kw_lower:\n                    conflicts.append({\n                        'keyword': keyword.term,\n                        'negative': neg_term,\n                        'resolution': 'Remove keyword or adjust negative'\n                    })\n        \n        return conflicts\n```\n\n2. Implement industry-specific negative keyword lists for home services\n3. Add functionality to detect conflicts between keywords and negatives\n4. Create methods to suggest additional negatives based on keyword analysis\n5. Implement export functionality for Google Ads-compatible negative keyword lists",
+        "testStrategy": "Test generation of negative keywords for different categories. Verify conflict detection works with various keyword patterns. Test deduplication of negative keywords. Ensure custom negatives are properly integrated. Test with edge cases like empty inputs and special characters.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Develop Ad Group Organization Module",
+        "description": "Create module to organize keywords into logical ad groups based on services and locations",
+        "details": "1. Create processors/ad_group_processor.py with the following functionality:\n\n```python\nfrom src.data_models import AdGroup\nimport logging\n\nclass AdGroupProcessor:\n    def __init__(self):\n        self.match_types = ['broad', 'phrase', 'exact']\n    \n    def create_ad_groups(self, keywords, match_types=None):\n        \"\"\"Create ad groups based on keyword categories and locations\"\"\"\n        if not match_types:\n            match_types = ['broad']\n        \n        # Validate match types\n        for match_type in match_types:\n            if match_type not in self.match_types:\n                raise ValueError(f\"Invalid match type: {match_type}\")\n        \n        ad_groups = []\n        category_location_map = {}\n        \n        # Group keywords by category and location\n        for keyword in keywords:\n            key = (keyword.category, keyword.location)\n            if key not in category_location_map:\n                category_location_map[key] = []\n            category_location_map[key].append(keyword.term)\n        \n        # Create ad groups for each category-location combination\n        for (category, location), keyword_list in category_location_map.items():\n            location_str = location if location else \"General\"\n            ad_group_name = f\"{category} - {location_str}\"\n            \n            for match_type in match_types:\n                ad_groups.append(AdGroup(\n                    name=f\"{ad_group_name} - {match_type.capitalize()}\",\n                    keywords=keyword_list,\n                    match_type=match_type\n                ))\n        \n        return ad_groups\n    \n    def format_for_google_ads(self, ad_groups):\n        \"\"\"Format ad groups for Google Ads import\"\"\"\n        formatted_data = []\n        \n        for ad_group in ad_groups:\n            for keyword in ad_group.keywords:\n                # Format based on match type\n                if ad_group.match_type == 'broad':\n                    formatted_keyword = keyword\n                elif ad_group.match_type == 'phrase':\n                    formatted_keyword = f'\"{keyword}\"'\n                elif ad_group.match_type == 'exact':\n                    formatted_keyword = f'[{keyword}]'\n                \n                formatted_data.append({\n                    'Ad Group': ad_group.name,\n                    'Keyword': formatted_keyword,\n                    'Match Type': ad_group.match_type.capitalize()\n                })\n        \n        return formatted_data\n```\n\n2. Implement logic to handle different match types (broad, phrase, exact)\n3. Add functionality to balance ad group sizes (avoid too many or too few keywords)\n4. Create methods to suggest bid adjustments based on competition data\n5. Implement export functionality for Google Ads-compatible ad group structure",
+        "testStrategy": "Test ad group creation with various keyword sets. Verify correct grouping by category and location. Test with different match types. Ensure Google Ads formatting follows required syntax. Test edge cases like empty keyword lists and special characters in ad group names.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Competition Analysis Module",
+        "description": "Create module to analyze SpyFu CSV data and identify keyword opportunities and gaps",
+        "details": "1. Create processors/competition_analyzer.py with the following functionality:\n\n```python\nfrom src.data_models import CompetitorKeyword\nimport pandas as pd\nimport logging\n\nclass CompetitionAnalyzer:\n    def __init__(self):\n        pass\n    \n    def analyze_spyfu_data(self, spyfu_data, user_keywords):\n        \"\"\"Analyze SpyFu competitor data against user keywords\"\"\"\n        competitor_keywords = []\n        user_keyword_terms = [kw.term.lower() for kw in user_keywords]\n        \n        for item in spyfu_data:\n            # Create CompetitorKeyword object\n            competitor_kw = CompetitorKeyword(\n                term=item['Keyword'],\n                volume=item.get('Volume'),\n                cpc=item.get('CPC')\n            )\n            \n            # Check for overlap with user keywords\n            if competitor_kw.term.lower() in user_keyword_terms:\n                competitor_kw.overlap = True\n                competitor_kw.recommendation = \"Already in your keyword list\"\n            else:\n                # Analyze potential value\n                if competitor_kw.volume and competitor_kw.cpc:\n                    if competitor_kw.volume > 100 and competitor_kw.cpc > 5.0:\n                        competitor_kw.recommendation = \"High value - consider adding\"\n                    elif competitor_kw.volume > 50 and competitor_kw.cpc > 3.0:\n                        competitor_kw.recommendation = \"Medium value - consider adding\"\n                    else:\n                        competitor_kw.recommendation = \"Low value - monitor\"\n                else:\n                    competitor_kw.recommendation = \"Insufficient data for recommendation\"\n            \n            competitor_keywords.append(competitor_kw)\n        \n        return competitor_keywords\n    \n    def identify_gaps(self, competitor_keywords, user_keywords):\n        \"\"\"Identify keyword gaps and opportunities\"\"\"\n        # Find high-value keywords not in user list\n        opportunities = []\n        \n        for kw in competitor_keywords:\n            if not kw.overlap and \"High value\" in kw.recommendation:\n                opportunities.append(kw)\n        \n        # Sort by potential value (volume * cpc)\n        opportunities.sort(\n            key=lambda x: (x.volume or 0) * (x.cpc or 0),\n            reverse=True\n        )\n        \n        return opportunities[:100]  # Return top 100 opportunities\n    \n    def generate_report(self, competitor_keywords, opportunities):\n        \"\"\"Generate competition analysis report\"\"\"\n        report = {\n            'total_competitor_keywords': len(competitor_keywords),\n            'overlapping_keywords': sum(1 for kw in competitor_keywords if kw.overlap),\n            'opportunities': len(opportunities),\n            'top_opportunities': [{\n                'term': kw.term,\n                'volume': kw.volume,\n                'cpc': kw.cpc,\n                'estimated_value': (kw.volume or 0) * (kw.cpc or 0)\n            } for kw in opportunities[:10]]\n        }\n        \n        return report\n```\n\n2. Implement logic to identify high-value competitor keywords\n3. Add functionality to detect keyword gaps in user's list\n4. Create methods to suggest new keywords based on competitor data\n5. Implement export functionality for competition analysis reports",
+        "testStrategy": "Test analysis with sample SpyFu data. Verify overlap detection works correctly. Test opportunity identification with various threshold values. Ensure report generation includes all required metrics. Test with edge cases like empty inputs and missing data fields.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Implement Landing Page Scraping Module",
+        "description": "Create module to scrape competitor landing pages using FireCrawl API and extract copy insights",
+        "details": "1. Create processors/landing_page_scraper.py with the following functionality:\n\n```python\nfrom src.api_integration.firecrawl import FireCrawlClient\nfrom src.data_models import ScrapedCopy\nimport re\nimport logging\n\nclass LandingPageScraper:\n    def __init__(self, firecrawl_client):\n        self.firecrawl_client = firecrawl_client\n    \n    def scrape_landing_pages(self, urls):\n        \"\"\"Scrape landing pages using FireCrawl API\"\"\"\n        scraped_data = []\n        \n        for url in urls:\n            try:\n                # Get page content from FireCrawl\n                page_content = self.firecrawl_client.scrape_url(url)\n                \n                # Extract relevant content\n                scraped_copy = self._extract_copy(url, page_content)\n                scraped_data.append(scraped_copy)\n                \n            except Exception as e:\n                logging.error(f\"Error scraping URL '{url}': {e}\")\n                # Add empty record to maintain URL in output\n                scraped_data.append(ScrapedCopy(url=url))\n        \n        return scraped_data\n    \n    def _extract_copy(self, url, page_content):\n        \"\"\"Extract headlines, CTAs, and body text from page content\"\"\"\n        # Extract headline (usually in h1 tag)\n        headline_match = re.search(r'<h1[^>]*>(.*?)</h1>', page_content, re.DOTALL)\n        headline = self._clean_text(headline_match.group(1)) if headline_match else None\n        \n        # Extract CTA (buttons, forms, etc.)\n        cta_matches = re.findall(r'<button[^>]*>(.*?)</button>|<input[^>]*type=[\"\\']submit[\"\\'][^>]*value=[\"\\']([^\"\\']*)', page_content)\n        cta = self._clean_text(cta_matches[0][0] or cta_matches[0][1]) if cta_matches else None\n        \n        # Extract body snippet (p tags near the top)\n        body_match = re.search(r'<p[^>]*>(.*?)</p>', page_content, re.DOTALL)\n        body_snippet = self._clean_text(body_match.group(1)) if body_match else None\n        \n        return ScrapedCopy(\n            url=url,\n            headline=headline,\n            body_snippet=body_snippet,\n            cta=cta\n        )\n    \n    def _clean_text(self, text):\n        \"\"\"Clean extracted text by removing HTML tags and normalizing whitespace\"\"\"\n        if not text:\n            return None\n            \n        # Remove remaining HTML tags\n        text = re.sub(r'<[^>]*>', '', text)\n        \n        # Normalize whitespace\n        text = re.sub(r'\\s+', ' ', text).strip()\n        \n        return text\n    \n    def analyze_copy_trends(self, scraped_data):\n        \"\"\"Analyze trends in scraped copy\"\"\"\n        # Count word frequencies in headlines\n        headline_words = {}\n        for item in scraped_data:\n            if item.headline:\n                for word in item.headline.lower().split():\n                    if len(word) > 3:  # Skip short words\n                        headline_words[word] = headline_words.get(word, 0) + 1\n        \n        # Find common CTAs\n        cta_phrases = {}\n        for item in scraped_data:\n            if item.cta:\n                cta_phrases[item.cta] = cta_phrases.get(item.cta, 0) + 1\n        \n        return {\n            'common_headline_words': sorted(headline_words.items(), key=lambda x: x[1], reverse=True)[:10],\n            'common_ctas': sorted(cta_phrases.items(), key=lambda x: x[1], reverse=True)[:5]\n        }\n```\n\n2. Implement more sophisticated HTML parsing using BeautifulSoup if needed\n3. Add functionality to extract pricing information when available\n4. Create methods to identify common phrases and selling points\n5. Implement export functionality for scraped copy insights",
+        "testStrategy": "Test scraping with sample HTML content. Verify extraction of headlines, CTAs, and body text. Test with various HTML structures. Ensure error handling for failed requests. Test trend analysis with multiple pages. Verify cleaning of HTML tags works correctly.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Implement Output Generator and CLI Integration",
+        "description": "Create module to generate CSV outputs and integrate all components into a command-line interface",
+        "details": "1. Create output_generator/csv_exporter.py with the following functionality:\n\n```python\nimport pandas as pd\nimport os\nimport logging\nfrom datetime import datetime\n\nclass CSVExporter:\n    def __init__(self, output_dir='data/output'):\n        self.output_dir = output_dir\n        os.makedirs(output_dir, exist_ok=True)\n    \n    def export_keywords(self, keywords, filename='keywords.csv'):\n        \"\"\"Export keywords to CSV\"\"\"\n        data = [{\n            'Keyword': kw.term,\n            'Category': kw.category,\n            'Volume': kw.volume,\n            'CPC': kw.cpc,\n            'Competition': kw.competition,\n            'Location': kw.location\n        } for kw in keywords]\n        \n        return self._export_to_csv(data, filename)\n    \n    def export_negative_keywords(self, negative_keywords, filename='negative_keywords.csv'):\n        \"\"\"Export negative keywords to CSV\"\"\"\n        data = [{\n            'Negative Keyword': neg.term,\n            'Reason': neg.reason\n        } for neg in negative_keywords]\n        \n        return self._export_to_csv(data, filename)\n    \n    def export_ad_groups(self, ad_groups, filename='ad_groups.csv'):\n        \"\"\"Export ad groups to CSV\"\"\"\n        data = []\n        \n        for ad_group in ad_groups:\n            for keyword in ad_group.keywords:\n                # Format based on match type\n                if ad_group.match_type == 'broad':\n                    formatted_keyword = keyword\n                elif ad_group.match_type == 'phrase':\n                    formatted_keyword = f'\"{keyword}\"'\n                elif ad_group.match_type == 'exact':\n                    formatted_keyword = f'[{keyword}]'\n                \n                data.append({\n                    'Ad Group': ad_group.name,\n                    'Keyword': formatted_keyword,\n                    'Match Type': ad_group.match_type.capitalize()\n                })\n        \n        return self._export_to_csv(data, filename)\n    \n    def export_competition_report(self, competitor_keywords, filename='competition_report.csv'):\n        \"\"\"Export competition analysis to CSV\"\"\"\n        data = [{\n            'Competitor Keyword': kw.term,\n            'Volume': kw.volume,\n            'CPC': kw.cpc,\n            'Overlap': 'Yes' if kw.overlap else 'No',\n            'Recommendation': kw.recommendation\n        } for kw in competitor_keywords]\n        \n        return self._export_to_csv(data, filename)\n    \n    def export_scraped_copy(self, scraped_data, filename='scraped_copy.csv'):\n        \"\"\"Export scraped landing page copy to CSV\"\"\"\n        data = [{\n            'URL': item.url,\n            'Headline': item.headline,\n            'Body Snippet': item.body_snippet,\n            'CTA': item.cta\n        } for item in scraped_data]\n        \n        return self._export_to_csv(data, filename)\n    \n    def _export_to_csv(self, data, filename):\n        \"\"\"Export data to CSV file\"\"\"\n        try:\n            # Create timestamp for unique filenames\n            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')\n            filename_with_timestamp = f\"{os.path.splitext(filename)[0]}_{timestamp}.csv\"\n            filepath = os.path.join(self.output_dir, filename_with_timestamp)\n            \n            # Convert to DataFrame and export\n            df = pd.DataFrame(data)\n            df.to_csv(filepath, index=False)\n            \n            logging.info(f\"Exported data to {filepath}\")\n            return filepath\n        except Exception as e:\n            logging.error(f\"Error exporting to CSV: {e}\")\n            raise\n```\n\n2. Create main.py to integrate all components:\n\n```python\nimport argparse\nimport logging\nimport os\nfrom dotenv import load_dotenv\n\n# Import modules\nfrom src.input_parser.parser import parse_seed_keywords, parse_categories, parse_locations, parse_spyfu_data, parse_competitor_urls\nfrom src.api_integration.data4seo import Data4SEOClient\nfrom src.api_integration.serp_api import SerpApiClient\nfrom src.api_integration.firecrawl import FireCrawlClient\nfrom src.processors.keyword_processor import KeywordProcessor\nfrom src.processors.negative_keyword_processor import NegativeKeywordProcessor\nfrom src.processors.ad_group_processor import AdGroupProcessor\nfrom src.processors.competition_analyzer import CompetitionAnalyzer\nfrom src.processors.landing_page_scraper import LandingPageScraper\nfrom src.output_generator.csv_exporter import CSVExporter\n\ndef setup_logging():\n    \"\"\"Setup logging configuration\"\"\"\n    logging.basicConfig(\n        level=logging.INFO,\n        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',\n        handlers=[\n            logging.FileHandler(\"ppc_automator.log\"),\n            logging.StreamHandler()\n        ]\n    )\n\ndef main():\n    \"\"\"Main entry point for PPC Keyword Automator\"\"\"\n    # Setup\n    setup_logging()\n    load_dotenv()\n    \n    # Parse command line arguments\n    parser = argparse.ArgumentParser(description='PPC Keyword Automator')\n    parser.add_argument('--seeds', required=True, help='Path to seed keywords file (CSV or TXT)')\n    parser.add_argument('--categories', help='Path to categories file (CSV)')\n    parser.add_argument('--locations', required=True, help='Path to locations file (CSV)')\n    parser.add_argument('--spyfu', help='Path to SpyFu competition data (CSV)')\n    parser.add_argument('--urls', help='Path to competitor URLs file (TXT)')\n    parser.add_argument('--output', default='data/output', help='Output directory for CSV files')\n    args = parser.parse_args()\n    \n    try:\n        # Initialize API clients\n        data4seo_client = Data4SEOClient(os.getenv('DATA4SEO_API_KEY'))\n        serp_client = SerpApiClient(os.getenv('SERP_API_KEY'))\n        firecrawl_client = FireCrawlClient(os.getenv('FIRECRAWL_API_KEY'))\n        \n        # Initialize processors\n        keyword_processor = KeywordProcessor(data4seo_client, serp_client)\n        negative_processor = NegativeKeywordProcessor()\n        ad_group_processor = AdGroupProcessor()\n        competition_analyzer = CompetitionAnalyzer()\n        landing_page_scraper = LandingPageScraper(firecrawl_client)\n        csv_exporter = CSVExporter(args.output)\n        \n        # Parse inputs\n        seed_keywords = parse_seed_keywords(args.seeds)\n        locations = parse_locations(args.locations)\n        categories = parse_categories(args.categories) if args.categories else []\n        \n        # Process keywords\n        expanded_keywords = keyword_processor.expand_seed_keywords(seed_keywords)\n        combined_keywords = keyword_processor.combine_with_locations(expanded_keywords, locations)\n        enriched_keywords = keyword_processor.enrich_keywords_with_metrics(combined_keywords)\n        \n        # Generate negative keywords\n        negative_keywords = negative_processor.generate_negative_keywords(categories)\n        \n        # Create ad groups\n        ad_groups = ad_group_processor.create_ad_groups(enriched_keywords, match_types=['broad', 'phrase', 'exact'])\n        \n        # Process competition data if provided\n        competitor_keywords = []\n        if args.spyfu:\n            spyfu_data = parse_spyfu_data(args.spyfu)\n            competitor_keywords = competition_analyzer.analyze_spyfu_data(spyfu_data, enriched_keywords)\n            opportunities = competition_analyzer.identify_gaps(competitor_keywords, enriched_keywords)\n            competition_report = competition_analyzer.generate_report(competitor_keywords, opportunities)\n            logging.info(f\"Competition analysis complete. Found {len(opportunities)} opportunities.\")\n        \n        # Scrape landing pages if provided\n        scraped_data = []\n        if args.urls:\n            competitor_urls = parse_competitor_urls(args.urls)\n            scraped_data = landing_page_scraper.scrape_landing_pages(competitor_urls)\n            copy_trends = landing_page_scraper.analyze_copy_trends(scraped_data)\n            logging.info(f\"Landing page scraping complete. Analyzed {len(scraped_data)} pages.\")\n        \n        # Export results\n        keywords_file = csv_exporter.export_keywords(enriched_keywords)\n        negatives_file = csv_exporter.export_negative_keywords(negative_keywords)\n        ad_groups_file = csv_exporter.export_ad_groups(ad_groups)\n        \n        if competitor_keywords:\n            competition_file = csv_exporter.export_competition_report(competitor_keywords)\n            logging.info(f\"Exported competition report to {competition_file}\")\n        \n        if scraped_data:\n            copy_file = csv_exporter.export_scraped_copy(scraped_data)\n            logging.info(f\"Exported scraped copy to {copy_file}\")\n        \n        logging.info(f\"Process complete. Exported keywords to {keywords_file}\")\n        logging.info(f\"Exported negative keywords to {negatives_file}\")\n        logging.info(f\"Exported ad groups to {ad_groups_file}\")\n        \n    except Exception as e:\n        logging.error(f\"Error in main process: {e}\", exc_info=True)\n        return 1\n    \n    return 0\n\nif __name__ == '__main__':\n    exit(main())\n```\n\n3. Implement proper error handling and logging throughout\n4. Add progress indicators for long-running operations\n5. Create help documentation for command-line arguments",
+        "testStrategy": "Test CSV export with various data structures. Verify file naming and directory creation. Test CLI with different argument combinations. Ensure proper error messages for missing required arguments. Test end-to-end workflow with sample data. Verify logging captures appropriate information.",
+        "priority": "high",
+        "dependencies": [
+          2,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Project Management System",
+        "description": "Create isolated project folder structure with inputs/, configs/, outputs/ subdirectories for campaign reusability",
+        "details": "Implement a project management system that creates isolated folders for each campaign (e.g., projects/plumbing_campaign/). Each project should be self-contained with its own inputs, configurations, and outputs. This enables easy cloning and recreation of campaigns across different niches without code changes.",
+        "testStrategy": "Unit tests for folder creation, configuration loading, and project validation. Integration tests for project cloning and updates.",
+        "status": "pending",
+        "dependencies": [
+          1
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Implement CLI Subcommands Interface",
+        "description": "Create command-line interface with subcommands: create, research, generate, analyze, update, export, clone",
+        "details": "Develop a comprehensive CLI using argparse or click that supports all user workflows. Commands should include: create (new project), research (keyword expansion), generate (ad groups), analyze (competition), update (modify existing), export (CSV generation), and clone (duplicate project). Each command should have interactive prompts to guide users through the process.",
+        "testStrategy": "CLI command tests for each subcommand, integration tests for command workflows, error handling tests for invalid inputs.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          11
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Implement Project Clone and Update Features",
+        "description": "Create functionality to clone existing projects for new niches and update projects without recreation",
+        "details": "Implement features that enable project reusability: clone command to duplicate a project with adapted configurations for new niches, and update command to modify existing projects without starting from scratch. This ensures the app is not 'one-and-done' but a scalable tool for ongoing campaigns.",
+        "testStrategy": "Tests for project cloning with configuration changes, update operations preserving existing data, version control compatibility tests.",
+        "status": "pending",
+        "dependencies": [
+          11,
+          12
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Implement Data Export and Consolidation Module",
+        "description": "Create module to generate consolidated CSV exports and ZIP archives with proper Google Ads formatting",
+        "details": "Develop export functionality that generates all outputs as CSV files with consistent column formatting for Google Ads. Include ability to create consolidated ZIP archives for easy sharing. Log summaries of generated data (e.g., '500 keywords generated'). Ensure all CSV formats are 100% compatible with Google Ads import requirements.",
+        "testStrategy": "CSV format validation tests, Google Ads compatibility tests, ZIP archive creation tests, summary logging tests.",
+        "status": "pending",
+        "dependencies": [
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Error Handling and Recovery System",
+        "description": "Create comprehensive error handling with retry logic, partial completion support, and resume functionality",
+        "details": "Implement robust error handling that includes: exponential backoff for failed API calls, contextual error logging, user-friendly error messages, support for partial completion with clear status, and resume functionality for interrupted runs. This ensures reliability even with API rate limits or network issues.",
+        "testStrategy": "Error simulation tests, retry mechanism tests, partial completion tests, resume functionality tests.",
+        "status": "pending",
+        "dependencies": [
+          4
+        ],
+        "priority": "medium",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-25T14:50:58.211Z",
+      "updated": "2025-08-25T19:36:37.566Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

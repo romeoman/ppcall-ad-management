@@ -1,0 +1,233 @@
+# Task ID: 10
+# Title: Implement Output Generator and CLI Integration
+# Status: pending
+# Dependencies: 2, 5, 6, 7, 8, 9
+# Priority: high
+# Description: Create module to generate CSV outputs and integrate all components into a command-line interface
+# Details:
+1. Create output_generator/csv_exporter.py with the following functionality:
+
+```python
+import pandas as pd
+import os
+import logging
+from datetime import datetime
+
+class CSVExporter:
+    def __init__(self, output_dir='data/output'):
+        self.output_dir = output_dir
+        os.makedirs(output_dir, exist_ok=True)
+    
+    def export_keywords(self, keywords, filename='keywords.csv'):
+        """Export keywords to CSV"""
+        data = [{
+            'Keyword': kw.term,
+            'Category': kw.category,
+            'Volume': kw.volume,
+            'CPC': kw.cpc,
+            'Competition': kw.competition,
+            'Location': kw.location
+        } for kw in keywords]
+        
+        return self._export_to_csv(data, filename)
+    
+    def export_negative_keywords(self, negative_keywords, filename='negative_keywords.csv'):
+        """Export negative keywords to CSV"""
+        data = [{
+            'Negative Keyword': neg.term,
+            'Reason': neg.reason
+        } for neg in negative_keywords]
+        
+        return self._export_to_csv(data, filename)
+    
+    def export_ad_groups(self, ad_groups, filename='ad_groups.csv'):
+        """Export ad groups to CSV"""
+        data = []
+        
+        for ad_group in ad_groups:
+            for keyword in ad_group.keywords:
+                # Format based on match type
+                if ad_group.match_type == 'broad':
+                    formatted_keyword = keyword
+                elif ad_group.match_type == 'phrase':
+                    formatted_keyword = f'"{keyword}"'
+                elif ad_group.match_type == 'exact':
+                    formatted_keyword = f'[{keyword}]'
+                
+                data.append({
+                    'Ad Group': ad_group.name,
+                    'Keyword': formatted_keyword,
+                    'Match Type': ad_group.match_type.capitalize()
+                })
+        
+        return self._export_to_csv(data, filename)
+    
+    def export_competition_report(self, competitor_keywords, filename='competition_report.csv'):
+        """Export competition analysis to CSV"""
+        data = [{
+            'Competitor Keyword': kw.term,
+            'Volume': kw.volume,
+            'CPC': kw.cpc,
+            'Overlap': 'Yes' if kw.overlap else 'No',
+            'Recommendation': kw.recommendation
+        } for kw in competitor_keywords]
+        
+        return self._export_to_csv(data, filename)
+    
+    def export_scraped_copy(self, scraped_data, filename='scraped_copy.csv'):
+        """Export scraped landing page copy to CSV"""
+        data = [{
+            'URL': item.url,
+            'Headline': item.headline,
+            'Body Snippet': item.body_snippet,
+            'CTA': item.cta
+        } for item in scraped_data]
+        
+        return self._export_to_csv(data, filename)
+    
+    def _export_to_csv(self, data, filename):
+        """Export data to CSV file"""
+        try:
+            # Create timestamp for unique filenames
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename_with_timestamp = f"{os.path.splitext(filename)[0]}_{timestamp}.csv"
+            filepath = os.path.join(self.output_dir, filename_with_timestamp)
+            
+            # Convert to DataFrame and export
+            df = pd.DataFrame(data)
+            df.to_csv(filepath, index=False)
+            
+            logging.info(f"Exported data to {filepath}")
+            return filepath
+        except Exception as e:
+            logging.error(f"Error exporting to CSV: {e}")
+            raise
+```
+
+2. Create main.py to integrate all components:
+
+```python
+import argparse
+import logging
+import os
+from dotenv import load_dotenv
+
+# Import modules
+from src.input_parser.parser import parse_seed_keywords, parse_categories, parse_locations, parse_spyfu_data, parse_competitor_urls
+from src.api_integration.data4seo import Data4SEOClient
+from src.api_integration.serp_api import SerpApiClient
+from src.api_integration.firecrawl import FireCrawlClient
+from src.processors.keyword_processor import KeywordProcessor
+from src.processors.negative_keyword_processor import NegativeKeywordProcessor
+from src.processors.ad_group_processor import AdGroupProcessor
+from src.processors.competition_analyzer import CompetitionAnalyzer
+from src.processors.landing_page_scraper import LandingPageScraper
+from src.output_generator.csv_exporter import CSVExporter
+
+def setup_logging():
+    """Setup logging configuration"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler("ppc_automator.log"),
+            logging.StreamHandler()
+        ]
+    )
+
+def main():
+    """Main entry point for PPC Keyword Automator"""
+    # Setup
+    setup_logging()
+    load_dotenv()
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='PPC Keyword Automator')
+    parser.add_argument('--seeds', required=True, help='Path to seed keywords file (CSV or TXT)')
+    parser.add_argument('--categories', help='Path to categories file (CSV)')
+    parser.add_argument('--locations', required=True, help='Path to locations file (CSV)')
+    parser.add_argument('--spyfu', help='Path to SpyFu competition data (CSV)')
+    parser.add_argument('--urls', help='Path to competitor URLs file (TXT)')
+    parser.add_argument('--output', default='data/output', help='Output directory for CSV files')
+    args = parser.parse_args()
+    
+    try:
+        # Initialize API clients
+        data4seo_client = Data4SEOClient(os.getenv('DATA4SEO_API_KEY'))
+        serp_client = SerpApiClient(os.getenv('SERP_API_KEY'))
+        firecrawl_client = FireCrawlClient(os.getenv('FIRECRAWL_API_KEY'))
+        
+        # Initialize processors
+        keyword_processor = KeywordProcessor(data4seo_client, serp_client)
+        negative_processor = NegativeKeywordProcessor()
+        ad_group_processor = AdGroupProcessor()
+        competition_analyzer = CompetitionAnalyzer()
+        landing_page_scraper = LandingPageScraper(firecrawl_client)
+        csv_exporter = CSVExporter(args.output)
+        
+        # Parse inputs
+        seed_keywords = parse_seed_keywords(args.seeds)
+        locations = parse_locations(args.locations)
+        categories = parse_categories(args.categories) if args.categories else []
+        
+        # Process keywords
+        expanded_keywords = keyword_processor.expand_seed_keywords(seed_keywords)
+        combined_keywords = keyword_processor.combine_with_locations(expanded_keywords, locations)
+        enriched_keywords = keyword_processor.enrich_keywords_with_metrics(combined_keywords)
+        
+        # Generate negative keywords
+        negative_keywords = negative_processor.generate_negative_keywords(categories)
+        
+        # Create ad groups
+        ad_groups = ad_group_processor.create_ad_groups(enriched_keywords, match_types=['broad', 'phrase', 'exact'])
+        
+        # Process competition data if provided
+        competitor_keywords = []
+        if args.spyfu:
+            spyfu_data = parse_spyfu_data(args.spyfu)
+            competitor_keywords = competition_analyzer.analyze_spyfu_data(spyfu_data, enriched_keywords)
+            opportunities = competition_analyzer.identify_gaps(competitor_keywords, enriched_keywords)
+            competition_report = competition_analyzer.generate_report(competitor_keywords, opportunities)
+            logging.info(f"Competition analysis complete. Found {len(opportunities)} opportunities.")
+        
+        # Scrape landing pages if provided
+        scraped_data = []
+        if args.urls:
+            competitor_urls = parse_competitor_urls(args.urls)
+            scraped_data = landing_page_scraper.scrape_landing_pages(competitor_urls)
+            copy_trends = landing_page_scraper.analyze_copy_trends(scraped_data)
+            logging.info(f"Landing page scraping complete. Analyzed {len(scraped_data)} pages.")
+        
+        # Export results
+        keywords_file = csv_exporter.export_keywords(enriched_keywords)
+        negatives_file = csv_exporter.export_negative_keywords(negative_keywords)
+        ad_groups_file = csv_exporter.export_ad_groups(ad_groups)
+        
+        if competitor_keywords:
+            competition_file = csv_exporter.export_competition_report(competitor_keywords)
+            logging.info(f"Exported competition report to {competition_file}")
+        
+        if scraped_data:
+            copy_file = csv_exporter.export_scraped_copy(scraped_data)
+            logging.info(f"Exported scraped copy to {copy_file}")
+        
+        logging.info(f"Process complete. Exported keywords to {keywords_file}")
+        logging.info(f"Exported negative keywords to {negatives_file}")
+        logging.info(f"Exported ad groups to {ad_groups_file}")
+        
+    except Exception as e:
+        logging.error(f"Error in main process: {e}", exc_info=True)
+        return 1
+    
+    return 0
+
+if __name__ == '__main__':
+    exit(main())
+```
+
+3. Implement proper error handling and logging throughout
+4. Add progress indicators for long-running operations
+5. Create help documentation for command-line arguments
+
+# Test Strategy:
+Test CSV export with various data structures. Verify file naming and directory creation. Test CLI with different argument combinations. Ensure proper error messages for missing required arguments. Test end-to-end workflow with sample data. Verify logging captures appropriate information.

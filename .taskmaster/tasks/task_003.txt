@@ -1,0 +1,50 @@
+# Task ID: 3
+# Title: Create Data Models with Pydantic
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Implement Pydantic models for data validation and structure throughout the application
+# Details:
+1. Create data_models module with the following Pydantic models:
+
+```python
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+class Keyword(BaseModel):
+    term: str
+    category: str
+    volume: Optional[int] = None
+    cpc: Optional[float] = None
+    competition: Optional[float] = None
+    location: Optional[str] = None
+
+class NegativeKeyword(BaseModel):
+    term: str
+    reason: str
+
+class AdGroup(BaseModel):
+    name: str
+    keywords: List[str]
+    match_type: str = Field(..., pattern='^(broad|phrase|exact)$')
+
+class CompetitorKeyword(BaseModel):
+    term: str
+    volume: Optional[int] = None
+    cpc: Optional[float] = None
+    overlap: bool = False
+    recommendation: str = ""
+
+class ScrapedCopy(BaseModel):
+    url: str
+    headline: Optional[str] = None
+    body_snippet: Optional[str] = None
+    cta: Optional[str] = None
+```
+
+2. Implement validation methods for each model
+3. Create factory methods to convert between pandas DataFrames and Pydantic models
+4. Add custom validators where needed (e.g., ensuring CPC values are positive)
+
+# Test Strategy:
+Create unit tests for each Pydantic model. Test validation with valid and invalid data. Verify custom validators work correctly. Test conversion between DataFrames and model instances. Ensure models handle edge cases like empty strings, None values, and type conversions.

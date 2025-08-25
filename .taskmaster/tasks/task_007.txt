@@ -1,0 +1,81 @@
+# Task ID: 7
+# Title: Develop Ad Group Organization Module
+# Status: pending
+# Dependencies: 3, 5
+# Priority: medium
+# Description: Create module to organize keywords into logical ad groups based on services and locations
+# Details:
+1. Create processors/ad_group_processor.py with the following functionality:
+
+```python
+from src.data_models import AdGroup
+import logging
+
+class AdGroupProcessor:
+    def __init__(self):
+        self.match_types = ['broad', 'phrase', 'exact']
+    
+    def create_ad_groups(self, keywords, match_types=None):
+        """Create ad groups based on keyword categories and locations"""
+        if not match_types:
+            match_types = ['broad']
+        
+        # Validate match types
+        for match_type in match_types:
+            if match_type not in self.match_types:
+                raise ValueError(f"Invalid match type: {match_type}")
+        
+        ad_groups = []
+        category_location_map = {}
+        
+        # Group keywords by category and location
+        for keyword in keywords:
+            key = (keyword.category, keyword.location)
+            if key not in category_location_map:
+                category_location_map[key] = []
+            category_location_map[key].append(keyword.term)
+        
+        # Create ad groups for each category-location combination
+        for (category, location), keyword_list in category_location_map.items():
+            location_str = location if location else "General"
+            ad_group_name = f"{category} - {location_str}"
+            
+            for match_type in match_types:
+                ad_groups.append(AdGroup(
+                    name=f"{ad_group_name} - {match_type.capitalize()}",
+                    keywords=keyword_list,
+                    match_type=match_type
+                ))
+        
+        return ad_groups
+    
+    def format_for_google_ads(self, ad_groups):
+        """Format ad groups for Google Ads import"""
+        formatted_data = []
+        
+        for ad_group in ad_groups:
+            for keyword in ad_group.keywords:
+                # Format based on match type
+                if ad_group.match_type == 'broad':
+                    formatted_keyword = keyword
+                elif ad_group.match_type == 'phrase':
+                    formatted_keyword = f'"{keyword}"'
+                elif ad_group.match_type == 'exact':
+                    formatted_keyword = f'[{keyword}]'
+                
+                formatted_data.append({
+                    'Ad Group': ad_group.name,
+                    'Keyword': formatted_keyword,
+                    'Match Type': ad_group.match_type.capitalize()
+                })
+        
+        return formatted_data
+```
+
+2. Implement logic to handle different match types (broad, phrase, exact)
+3. Add functionality to balance ad group sizes (avoid too many or too few keywords)
+4. Create methods to suggest bid adjustments based on competition data
+5. Implement export functionality for Google Ads-compatible ad group structure
+
+# Test Strategy:
+Test ad group creation with various keyword sets. Verify correct grouping by category and location. Test with different match types. Ensure Google Ads formatting follows required syntax. Test edge cases like empty keyword lists and special characters in ad group names.
