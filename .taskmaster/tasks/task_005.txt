@@ -8,14 +8,14 @@
 1. Create processors/keyword_processor.py with the following functions:
 
 ```python
-from src.api_integration.data4seo import Data4SEOClient
+from src.api_integration.dataforseo import DataForSEOClient
 from src.api_integration.serp_api import SerpApiClient
 from src.data_models import Keyword
 import logging
 
 class KeywordProcessor:
-    def __init__(self, data4seo_client, serp_client):
-        self.data4seo_client = data4seo_client
+    def __init__(self, dataforseo_client, serp_client):
+        self.dataforseo_client = dataforseo_client
         self.serp_client = serp_client
     
     def expand_seed_keywords(self, seed_keywords):
@@ -24,8 +24,8 @@ class KeywordProcessor:
         
         for seed in seed_keywords:
             try:
-                # Get suggestions from Data4SEO
-                data4seo_suggestions = self.data4seo_client.expand_keywords(seed['Keyword'])
+                # Get suggestions from DataForSEO
+                data4seo_suggestions = self.dataforseo_client.expand_keywords(seed['Keyword'])
                 
                 # Get suggestions from SERP API as backup/additional source
                 serp_suggestions = self.serp_client.get_keyword_suggestions(seed['Keyword'])

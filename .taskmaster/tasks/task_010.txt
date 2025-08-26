@@ -114,7 +114,7 @@ from dotenv import load_dotenv
 
 # Import modules
 from src.input_parser.parser import parse_seed_keywords, parse_categories, parse_locations, parse_spyfu_data, parse_competitor_urls
-from src.api_integration.data4seo import Data4SEOClient
+from src.api_integration.dataforseo import DataForSEOClient
 from src.api_integration.serp_api import SerpApiClient
 from src.api_integration.firecrawl import FireCrawlClient
 from src.processors.keyword_processor import KeywordProcessor
@@ -153,12 +153,12 @@ def main():
     
     try:
         # Initialize API clients
-        data4seo_client = Data4SEOClient(os.getenv('DATA4SEO_API_KEY'))
+        dataforseo_client = DataForSEOClient(os.getenv('DATAFORSEO_API_KEY'))
         serp_client = SerpApiClient(os.getenv('SERP_API_KEY'))
         firecrawl_client = FireCrawlClient(os.getenv('FIRECRAWL_API_KEY'))
         
         # Initialize processors
-        keyword_processor = KeywordProcessor(data4seo_client, serp_client)
+        keyword_processor = KeywordProcessor(dataforseo_client, serp_client)
         negative_processor = NegativeKeywordProcessor()
         ad_group_processor = AdGroupProcessor()
         competition_analyzer = CompetitionAnalyzer()

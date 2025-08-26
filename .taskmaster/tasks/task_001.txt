@@ -60,7 +60,7 @@ Create requirements.txt with essential packages: pydantic, python-dotenv, reques
 ### Dependencies: None
 ### Description: Set up .env.example and configuration management
 ### Details:
-Create .env.example with placeholders for API keys (DATA4SEO_API_KEY, SERP_API_KEY, FIRECRAWL_API_KEY), default configurations. Set up python-dotenv integration for loading environment variables. Create config.py module for centralized configuration management.
+Create .env.example with placeholders for API keys (DATAFORSEO_API_KEY, SERP_API_KEY, FIRECRAWL_API_KEY), default configurations. Set up python-dotenv integration for loading environment variables. Create config.py module for centralized configuration management.
 
 ## 6. Create initial README and project documentation [done]
 ### Dependencies: None

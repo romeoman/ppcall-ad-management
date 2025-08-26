@@ -106,8 +106,8 @@ class ProjectOutputs(BaseModel):
 
 class APIConfig(BaseModel):
     """API configuration for external services."""
-    data4seo_login: Optional[str] = Field(None, description="Data4SEO API login")
-    data4seo_password: Optional[str] = Field(None, description="Data4SEO API password")
+    dataforseo_login: Optional[str] = Field(None, description="DataForSEO API login")
+    dataforseo_password: Optional[str] = Field(None, description="DataForSEO API password")
     serp_api_key: Optional[str] = Field(None, description="SERP API key")
     firecrawl_api_key: Optional[str] = Field(None, description="FireCrawl API key")
     
@@ -117,9 +117,9 @@ class APIConfig(BaseModel):
     retry_attempts: int = Field(default=3, ge=0, le=10)
     rate_limit_delay: float = Field(default=1.0, ge=0, le=10)
     
-    def has_data4seo_credentials(self) -> bool:
-        """Check if Data4SEO credentials are configured."""
-        return bool(self.data4seo_login and self.data4seo_password)
+    def has_dataforseo_credentials(self) -> bool:
+        """Check if DataForSEO credentials are configured."""
+        return bool(self.dataforseo_login and self.dataforseo_password)
     
     def has_serp_credentials(self) -> bool:
         """Check if SERP API credentials are configured."""
@@ -230,7 +230,7 @@ class ProjectConfig(BaseModel):
         if not self.inputs.has_seed_keywords():
             errors.append("No seed keywords provided")
         
-        if not self.api_config.has_data4seo_credentials() and not self.api_config.has_serp_credentials():
+        if not self.api_config.has_dataforseo_credentials() and not self.api_config.has_serp_credentials():
             errors.append("No API credentials configured")
         
         if self.processing_config.max_search_volume and \

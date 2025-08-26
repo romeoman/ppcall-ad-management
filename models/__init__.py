@@ -22,8 +22,8 @@ from .competition_models import (
     SpyFuData,
 )
 from .api_models import (
-    Data4SEORequest,
-    Data4SEOResponse,
+    DataForSEORequest,
+    DataForSEOResponse,
     SERPRequest,
     SERPResponse,
     FireCrawlRequest,
@@ -64,8 +64,8 @@ __all__ = [
     "KeywordGap",
     "SpyFuData",
     # API models
-    "Data4SEORequest",
-    "Data4SEOResponse",
+    "DataForSEORequest",
+    "DataForSEOResponse",
     "SERPRequest",
     "SERPResponse",
     "FireCrawlRequest",

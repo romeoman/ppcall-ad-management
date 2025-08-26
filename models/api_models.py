@@ -6,9 +6,9 @@ from datetime import datetime
 from .keyword_models import Keyword, KeywordMetrics
 
 
-# Data4SEO Models
-class Data4SEORequest(BaseModel):
-    """Request model for Data4SEO API."""
+# DataForSEO Models
+class DataForSEORequest(BaseModel):
+    """Request model for DataForSEO API."""
     keywords: List[str] = Field(..., min_length=1, max_length=1000)
     location_code: int = Field(default=2840, description="Location code (2840 = United States)")
     language_code: str = Field(default="en", pattern="^[a-z]{2}$")
@@ -25,7 +25,7 @@ class Data4SEORequest(BaseModel):
         return [k.strip().lower() for k in v if k.strip()]
     
     def to_api_payload(self) -> List[Dict[str, Any]]:
-        """Convert to Data4SEO API payload format."""
+        """Convert to DataForSEO API payload format."""
         return [{
             "keywords": self.keywords,
             "location_code": self.location_code,
@@ -36,8 +36,8 @@ class Data4SEORequest(BaseModel):
         }]
 
 
-class Data4SEOKeywordData(BaseModel):
-    """Individual keyword data from Data4SEO response."""
+class DataForSEOKeywordData(BaseModel):
+    """Individual keyword data from DataForSEO response."""
     keyword: str
     location_code: int
     language_code: str
@@ -60,7 +60,7 @@ class Data4SEOKeywordData(BaseModel):
         return Keyword(
             term=self.keyword,
             metrics=metrics,
-            source="data4seo",
+            source="dataforseo",
             metadata={
                 "location_code": self.location_code,
                 "keyword_difficulty": self.keyword_difficulty,
@@ -68,8 +68,8 @@ class Data4SEOKeywordData(BaseModel):
         )
 
 
-class Data4SEOResponse(BaseModel):
-    """Response model from Data4SEO API."""
+class DataForSEOResponse(BaseModel):
+    """Response model from DataForSEO API."""
     version: str
     status_code: int
     status_message: str
@@ -79,7 +79,7 @@ class Data4SEOResponse(BaseModel):
     tasks_error: int
     tasks: List[Dict[str, Any]]
     
-    def get_keyword_data(self) -> List[Data4SEOKeywordData]:
+    def get_keyword_data(self) -> List[DataForSEOKeywordData]:
         """Extract keyword data from response."""
         keywords = []
         for task in self.tasks:
@@ -87,7 +87,7 @@ class Data4SEOResponse(BaseModel):
                 for result in task["result"]:
                     if "items" in result:
                         for item in result["items"]:
-                            keywords.append(Data4SEOKeywordData(**item))
+                            keywords.append(DataForSEOKeywordData(**item))
         return keywords
 
 

@@ -3,10 +3,10 @@
 # Status: pending
 # Dependencies: 1, 3
 # Priority: high
-# Description: Create connectors for Data4SEO, SERP, and FireCrawl APIs to fetch keyword data and scrape landing pages
+# Description: Create connectors for DataForSEO, SERP, and FireCrawl APIs to fetch keyword data and scrape landing pages
 # Details:
 1. Create api_integration module with the following components:
-   - data4seo.py: Connector for Data4SEO API
+   - dataforseo.py: Connector for DataForSEO API
    - serp_api.py: Connector for SERP API
    - firecrawl.py: Connector for FireCrawl API
 
@@ -39,10 +39,10 @@ class BaseAPIClient:
             raise
 ```
 
-3. Implement Data4SEO client for keyword research:
+3. Implement DataForSEO client for keyword research:
 ```python
-class Data4SEOClient(BaseAPIClient):
-    BASE_URL = "https://api.data4seo.com/v1"
+class DataForSEOClient(BaseAPIClient):
+    BASE_URL = "https://api.dataforseo.com/v1"
     
     def __init__(self, api_key):
         super().__init__(api_key)
