@@ -6,67 +6,99 @@
 # Description: Create connectors for DataForSEO, SERP, and FireCrawl APIs to fetch keyword data and scrape landing pages
 # Details:
 1. Create api_integration module with the following components:
-   - dataforseo.py: Connector for DataForSEO API
+   - base_client.py: Abstract base API client with async support
+   - dataforseo.py: Connector for DataForSEO API with basic auth
    - serp_api.py: Connector for SERP API
    - firecrawl.py: Connector for FireCrawl API
 
-2. Implement base API client with retry logic using tenacity:
+2. Implement async base API client with retry logic:
 ```python
-from tenacity import retry, stop_after_attempt, wait_exponential
-import requests
+import aiohttp
+import asyncio
+from typing import Dict, Any, Optional
 import logging
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 class BaseAPIClient:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.session = requests.Session()
+    def __init__(self, max_concurrent: int = 5):
+        self.session: Optional[aiohttp.ClientSession] = None
+        self.semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.session.close()
     
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def _make_request(self, method, endpoint, params=None, data=None, headers=None):
-        """Make API request with retry logic"""
-        try:
-            response = self.session.request(
-                method=method,
-                url=endpoint,
-                params=params,
-                json=data,
-                headers=headers
-            )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logging.error(f"API request failed: {e}")
-            raise
+    async def _make_request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
+        async with self.semaphore:
+            async with self.session.request(method, url, **kwargs) as response:
+                response.raise_for_status()
+                return await response.json()
 ```
 
-3. Implement DataForSEO client for keyword research:
+3. Implement DataForSEO client with proper authentication:
 ```python
+import base64
+from models.api_models import DataForSEORequest, DataForSEOResponse
+
 class DataForSEOClient(BaseAPIClient):
-    BASE_URL = "https://api.dataforseo.com/v1"
+    BASE_URL = "https://api.dataforseo.com/v3"
     
-    def __init__(self, api_key):
-        super().__init__(api_key)
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+    def __init__(self, login: str, password: str, max_concurrent: int = 5):
+        super().__init__(max_concurrent)
+        self.auth = aiohttp.BasicAuth(login, password)
     
-    def get_keyword_data(self, keywords):
-        """Get search volume, CPC, and competition for keywords"""
-        endpoint = f"{self.BASE_URL}/keywords_data"
-        data = {"keywords": keywords}
-        return self._make_request("POST", endpoint, data=data, headers=self.headers)
+    async def get_keyword_data(self, request: DataForSEORequest) -> DataForSEOResponse:
+        """Get keyword data for Google Ads"""
+        endpoint = f"{self.BASE_URL}/keywords_data/google_ads/search_volume/live"
+        payload = request.to_api_payload()
+        
+        response = await self._make_request(
+            "POST", 
+            endpoint,
+            json=payload,
+            auth=self.auth
+        )
+        return DataForSEOResponse(**response)
     
-    def expand_keywords(self, seed_keyword):
-        """Get keyword suggestions based on seed keyword"""
-        endpoint = f"{self.BASE_URL}/keyword_suggestions"
-        data = {"keyword": seed_keyword}
-        return self._make_request("POST", endpoint, data=data, headers=self.headers)
+    async def get_keyword_suggestions(self, keyword: str, location: int = 2840):
+        """Get keyword suggestions"""
+        endpoint = f"{self.BASE_URL}/keywords_data/google_ads/keywords_for_keywords/live"
+        payload = [{
+            "keywords": [keyword],
+            "location_code": location,
+            "language_code": "en"
+        }]
+        
+        return await self._make_request(
+            "POST",
+            endpoint,
+            json=payload,
+            auth=self.auth
+        )
 ```
 
-4. Implement similar clients for SERP API and FireCrawl
-5. Add batch processing to handle API rate limits
-6. Implement caching to avoid redundant API calls
+4. Implement SERP and FireCrawl clients with API key auth
+5. Add rate limiting with asyncio.Semaphore for concurrent requests
+6. Implement Redis caching for API responses to avoid redundant calls
+7. Use Pydantic models for request/response validation
 
 # Test Strategy:
-Create mock responses for each API. Test retry logic with simulated failures. Verify correct handling of API rate limits. Test batch processing with large keyword sets. Ensure proper error handling for API-specific error codes. Test caching mechanism to confirm it prevents redundant calls.
+Follow Test-Driven Development (TDD) approach with pytest:
+1. Write failing pytest tests first for each API client component
+2. Create pytest fixtures for mock API responses (use pytest-mock and aioresponses)
+3. Test async functionality with pytest-asyncio
+4. Verify retry logic with simulated failures using pytest fixtures
+5. Test rate limiting with concurrent request simulations
+6. Mock Redis cache for testing cache hit/miss scenarios
+7. Ensure 100% test coverage before marking task complete
+
+Test structure:
+- tests/test_api_integration/test_base_client.py - Test base API client with retry logic
+- tests/test_api_integration/test_dataforseo.py - Test DataForSEO client with mock responses  
+- tests/test_api_integration/test_serp_api.py - Test SERP API client
+- tests/test_api_integration/test_firecrawl.py - Test FireCrawl client
+- tests/fixtures/api_responses.py - Mock API response fixtures
