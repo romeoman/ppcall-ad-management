@@ -416,3 +416,397 @@ class TestGoogleAdsClient:
             async with client:
                 is_valid = await client.validate_credentials()
                 assert is_valid is False
+
+    # Keywords for Site Endpoint Tests
+    @pytest.mark.asyncio
+    async def test_keywords_for_site_basic(self, client):
+        """Test extracting keywords from a website."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/keywords_for_site/live"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "cost": 0.01,
+                    "result": [{
+                        "keyword": "plumbing services",
+                        "search_volume": 22000,
+                        "competition": 0.88,
+                        "cpc": 18.50,
+                        "relevance": 0.95
+                    }, {
+                        "keyword": "emergency plumber",
+                        "search_volume": 18000,
+                        "competition": 0.92,
+                        "cpc": 25.75,
+                        "relevance": 0.88
+                    }, {
+                        "keyword": "water heater repair",
+                        "search_volume": 8100,
+                        "competition": 0.75,
+                        "cpc": 15.25,
+                        "relevance": 0.82
+                    }]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_keywords_for_site(
+                    target="https://example-plumbing.com",
+                    location_code=2840,
+                    language_code="en"
+                )
+                
+                assert result["success"] is True
+                assert len(result["data"]) == 3
+                assert result["data"][0]["keyword"] == "plumbing services"
+                assert result["data"][0]["relevance"] == 0.95
+                assert result["data"][1]["cpc"] == 25.75
+
+    @pytest.mark.asyncio
+    async def test_keywords_for_site_branded_filter(self, client):
+        """Test filtering branded vs non-branded keywords."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/keywords_for_site/live"
+            
+            # Test with only non-branded keywords
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [
+                        {"keyword": "marketing software", "search_volume": 14800},
+                        {"keyword": "email marketing", "search_volume": 33100}
+                    ]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_keywords_for_site(
+                    target="https://example.com",
+                    include_branded_keywords=False,
+                    include_non_branded_keywords=True
+                )
+                
+                assert result["success"] is True
+                # Should not contain brand names
+                for item in result["data"]:
+                    assert "example" not in item["keyword"].lower()
+
+    @pytest.mark.asyncio
+    async def test_keywords_for_site_pagination(self, client):
+        """Test pagination for keywords for site."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/keywords_for_site/live"
+            
+            # First page
+            mock_page1 = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{"keyword": f"keyword_{i}", "search_volume": 1000} for i in range(100)]
+                }]
+            }
+            
+            # Second page
+            mock_page2 = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{"keyword": f"keyword_{i}", "search_volume": 1000} for i in range(100, 150)]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_page1, status=200)
+            m.post(endpoint, payload=mock_page2, status=200)
+            
+            async with client:
+                # Get first page
+                page1 = await client.get_keywords_for_site(
+                    target="https://example.com",
+                    limit=100,
+                    offset=0
+                )
+                assert len(page1["data"]) == 100
+                
+                # Get second page
+                page2 = await client.get_keywords_for_site(
+                    target="https://example.com",
+                    limit=100,
+                    offset=100
+                )
+                assert len(page2["data"]) == 50
+
+    # Keywords for Keywords Endpoint Tests  
+    @pytest.mark.asyncio
+    async def test_keywords_for_keywords_basic(self, client):
+        """Test generating keyword suggestions from seed keywords."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/keywords_for_keywords/live"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "cost": 0.006,
+                    "result": [{
+                        "keyword": "digital marketing",
+                        "search_volume": 40500,
+                        "competition": 0.65,
+                        "cpc": 8.25
+                    }, {
+                        "keyword": "online marketing",
+                        "search_volume": 22200,
+                        "competition": 0.58,
+                        "cpc": 6.50
+                    }, {
+                        "keyword": "internet marketing",
+                        "search_volume": 14800,
+                        "competition": 0.52,
+                        "cpc": 5.75
+                    }]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_keywords_for_keywords(
+                    keywords=["marketing"],
+                    location_code=2840,
+                    include_seed_keyword=True
+                )
+                
+                assert result["success"] is True
+                assert len(result["data"]) == 3
+                assert result["data"][0]["search_volume"] == 40500
+                
+    @pytest.mark.asyncio
+    async def test_keywords_for_keywords_with_sorting(self, client):
+        """Test keyword suggestions with sorting."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/keywords_for_keywords/live"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [
+                        {"keyword": "high cpc", "cpc": 50.0, "search_volume": 1000},
+                        {"keyword": "medium cpc", "cpc": 25.0, "search_volume": 2000},
+                        {"keyword": "low cpc", "cpc": 5.0, "search_volume": 5000}
+                    ]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_keywords_for_keywords(
+                    keywords=["test"],
+                    sort_by="cpc",
+                    limit=10
+                )
+                
+                assert result["data"][0]["cpc"] == 50.0
+                assert result["data"][2]["cpc"] == 5.0
+
+    # Ad Traffic by Keywords Endpoint Tests
+    @pytest.mark.asyncio
+    async def test_ad_traffic_by_keywords_basic(self, client):
+        """Test getting traffic estimates for keywords."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/ad_traffic_by_keywords/live"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "cost": 0.003,
+                    "result": [{
+                        "keyword": "insurance quotes",
+                        "match": "exact",
+                        "impressions": 125000,
+                        "clicks": 3750,
+                        "ctr": 0.03,
+                        "average_cpc": 45.50,
+                        "cost": 170625.0,
+                        "bid": 50.0
+                    }]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_ad_traffic_by_keywords(
+                    keywords=["insurance quotes"],
+                    location_code=2840,
+                    bid=50.0,
+                    match="exact"
+                )
+                
+                assert result["success"] is True
+                assert result["data"][0]["impressions"] == 125000
+                assert result["data"][0]["clicks"] == 3750
+                assert result["data"][0]["ctr"] == 0.03
+                assert result["data"][0]["cost"] == 170625.0
+
+    @pytest.mark.asyncio
+    async def test_ad_traffic_with_date_range(self, client):
+        """Test traffic estimates with forecasting date range."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/ad_traffic_by_keywords/live"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{
+                        "keyword": "tax software",
+                        "impressions": 250000,
+                        "clicks": 12500,
+                        "date_from": "2024-01-01",
+                        "date_to": "2024-03-31"
+                    }]
+                }]
+            }
+            
+            m.post(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_ad_traffic_by_keywords(
+                    keywords=["tax software"],
+                    date_from="2024-01-01",
+                    date_to="2024-03-31"
+                )
+                
+                assert result["success"] is True
+                assert result["data"][0]["impressions"] == 250000
+
+    @pytest.mark.asyncio
+    async def test_ad_traffic_match_types(self, client):
+        """Test different match types for traffic estimation."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/ad_traffic_by_keywords/live"
+            
+            # Test exact match
+            m.post(endpoint, payload={
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{"match": "exact", "impressions": 10000}]
+                }]
+            }, status=200)
+            
+            # Test phrase match
+            m.post(endpoint, payload={
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{"match": "phrase", "impressions": 25000}]
+                }]
+            }, status=200)
+            
+            # Test broad match
+            m.post(endpoint, payload={
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [{"match": "broad", "impressions": 50000}]
+                }]
+            }, status=200)
+            
+            async with client:
+                exact = await client.get_ad_traffic_by_keywords(["test"], match="exact")
+                phrase = await client.get_ad_traffic_by_keywords(["test"], match="phrase")
+                broad = await client.get_ad_traffic_by_keywords(["test"], match="broad")
+                
+                # Verify match type hierarchy: broad > phrase > exact
+                assert broad["data"][0]["impressions"] > phrase["data"][0]["impressions"]
+                assert phrase["data"][0]["impressions"] > exact["data"][0]["impressions"]
+
+    # Locations and Languages Endpoint Tests
+    @pytest.mark.asyncio
+    async def test_get_locations(self, client):
+        """Test getting supported locations."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/locations"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [
+                        {"location_code": 2840, "location_name": "United States"},
+                        {"location_code": 2826, "location_name": "United Kingdom"},
+                        {"location_code": 2124, "location_name": "Canada"}
+                    ]
+                }]
+            }
+            
+            m.get(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_locations()
+                
+                assert result["success"] is True
+                assert len(result["data"]) == 3
+                assert result["data"][0]["location_code"] == 2840
+
+    @pytest.mark.asyncio
+    async def test_get_locations_by_country(self, client):
+        """Test getting locations filtered by country."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/locations/US"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [
+                        {"location_code": 1014221, "location_name": "New York"},
+                        {"location_code": 1014044, "location_name": "California"}
+                    ]
+                }]
+            }
+            
+            m.get(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_locations(country="US")
+                
+                assert result["success"] is True
+                assert len(result["data"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_get_languages(self, client):
+        """Test getting supported languages."""
+        with aioresponses() as m:
+            endpoint = f"{client.BASE_URL}/keywords_data/google_ads/languages"
+            
+            mock_response = {
+                "status_code": 20000,
+                "tasks": [{
+                    "status_code": 20000,
+                    "result": [
+                        {"language_code": "en", "language_name": "English"},
+                        {"language_code": "es", "language_name": "Spanish"},
+                        {"language_code": "fr", "language_name": "French"}
+                    ]
+                }]
+            }
+            
+            m.get(endpoint, payload=mock_response, status=200)
+            
+            async with client:
+                result = await client.get_languages()
+                
+                assert result["success"] is True
+                assert len(result["data"]) == 3
+                assert result["data"][0]["language_code"] == "en"
