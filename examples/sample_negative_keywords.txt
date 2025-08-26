@@ -1,0 +1,15 @@
+# Negative keywords to exclude from campaigns
+free
+cheap
+diy
+tutorial
+how to
+guide
+course
+training
+job
+jobs
+career
+salary
+school
+certification

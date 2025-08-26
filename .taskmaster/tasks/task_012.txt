@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Implement CLI Subcommands Interface
+# Status: pending
+# Dependencies: 1, 11
+# Priority: high
+# Description: Create command-line interface with subcommands: create, research, generate, analyze, update, export, clone
+# Details:
+Develop a comprehensive CLI using argparse or click that supports all user workflows. Commands should include: create (new project), research (keyword expansion), generate (ad groups), analyze (competition), update (modify existing), export (CSV generation), and clone (duplicate project). Each command should have interactive prompts to guide users through the process.
+
+# Test Strategy:
+CLI command tests for each subcommand, integration tests for command workflows, error handling tests for invalid inputs.

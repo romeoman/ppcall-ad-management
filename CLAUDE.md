@@ -70,6 +70,7 @@
 - **Use MCP DOCKER as main MCP** here you will be able to use context7 tool so that you can search for libraries and documentation of DataforSEO and more.
 - **USE Repo MCP** to search fast in the repository, get code arhcitecture, get code map, get_file_tree, request_plan and more.
 - **USE MCP TASK-MASTER** to update the tasks, create dependency, run complexity report, add subtask and so on. Generally for project management.
+- **For Gihub Repo Action** please use MCP DOCKER tool GIHUB and after each task or sub-task please git commit and push. 
 
 ### Core Task-Master Workflow Commands
 

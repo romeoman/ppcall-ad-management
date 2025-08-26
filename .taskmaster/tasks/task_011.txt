@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Implement Project Management System
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Create isolated project folder structure with inputs/, configs/, outputs/ subdirectories for campaign reusability
+# Details:
+Implement a project management system that creates isolated folders for each campaign (e.g., projects/plumbing_campaign/). Each project should be self-contained with its own inputs, configurations, and outputs. This enables easy cloning and recreation of campaigns across different niches without code changes.
+
+# Test Strategy:
+Unit tests for folder creation, configuration loading, and project validation. Integration tests for project cloning and updates.
