@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Implement API Integration Layer
-# Status: in-progress
+# Status: done
 # Dependencies: 1, 3
 # Priority: high
 # Description: Create connectors for DataForSEO, SERP, and FireCrawl APIs to fetch keyword data and scrape landing pages
@@ -103,33 +103,231 @@ Test structure:
 - tests/test_api_integration/test_firecrawl.py - Test FireCrawl client
 - tests/fixtures/api_responses.py - Mock API response fixtures
 
-# Progress Update (2025-01-26):
-## Completed:
-1. ✅ BaseAPIClient implementation with:
-   - Async context manager for session management
-   - Retry logic with tenacity (3 attempts, exponential backoff)
-   - Rate limiting with asyncio.Semaphore
-   - Proper error handling and JSON response parsing
-   - 12 comprehensive tests - ALL PASSING
+# Subtasks:
+## 1. Refactor DataForSEO for PPC focus with Google Ads and Bing Ads separation [pending]
+### Dependencies: None
+### Description: Restructure DataForSEO implementation to focus on PPC advertising with clear separation between Google Ads and Bing Ads platforms
+### Details:
+Create dataforseo/ subdirectory with:
+- base_dataforseo.py: Shared authentication and base methods
+- google_ads_client.py: Google Ads specific endpoints (6 endpoints)
+- bing_ads_client.py: Bing Ads specific endpoints (10 endpoints)
 
-2. ✅ DataForSEOClient implementation with:
-   - BasicAuth authentication (username/password)
-   - get_keyword_data() - search volume and metrics
-   - get_keyword_suggestions() - keyword ideas
-   - get_locations() and get_languages() - metadata
-   - get_search_volume_history() - historical data
-   - get_keyword_metrics_for_site() - site keywords
-   - 11 comprehensive tests - ALL PASSING
+Documentation:
+- Google Ads API overview: https://dataforseo.com/apis/google-ads-api
+- Bing Ads API overview: https://dataforseo.com/apis/bing-ads-api
 
-3. ✅ Test Infrastructure:
-   - pytest-asyncio for async testing
-   - aioresponses for mocking HTTP requests
-   - APIResponseFixtures with mock responses
-   - Total: 23 tests passing
+## 2. Implement Google Ads Search Volume endpoint [pending]
+### Dependencies: 4.1
+### Description: Implement search volume data retrieval for Google Ads keywords with bulk support (up to 1000 keywords)
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/google_ads/search_volume/live/
 
-## Still To Do:
-- [ ] SerpAPIClient implementation
-- [ ] FireCrawlClient implementation  
-- [ ] Redis caching layer
-- [ ] Pydantic models for request/response validation
-- [ ] Integration tests with actual APIs (requires credentials)
+Returns:
+- Search volume (latest monthly searches)
+- Competition level (0-1 scale)
+- CPC (cost per click)
+- Monthly searches history (12 months)
+- Low/high top of page bid estimates
+
+TDD Approach:
+1. Write tests for bulk keyword processing
+2. Test response parsing for monthly history
+3. Test error handling for rate limits
+
+## 3. Implement Google Ads Keywords for Site endpoint [pending]
+### Dependencies: 4.1
+### Description: Extract keywords relevant to a specific website or landing page for competitor analysis
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/google_ads/keywords_for_site/live/
+
+Purpose:
+- Analyze competitor websites
+- Find keywords for landing pages
+- Discover untapped keyword opportunities
+
+Parameters:
+- target (URL of website)
+- location_code
+- language_code
+- include_branded_keywords
+- include_non_branded_keywords
+
+## 4. Implement Google Ads Keywords for Keywords endpoint [pending]
+### Dependencies: 4.1
+### Description: Generate keyword suggestions and related keywords based on seed keywords
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/google_ads/keywords_for_keywords/live/
+
+Purpose:
+- Keyword expansion from seed keywords
+- Find related and similar keywords
+- Discover long-tail variations
+
+Returns:
+- Related keywords with metrics
+- Search volume for each suggestion
+- Competition and CPC data
+- Relevance scores
+
+## 5. Implement Google Ads Ad Traffic by Keywords endpoint [pending]
+### Dependencies: 4.1
+### Description: Estimate potential traffic and bid ranges for keywords in Google Ads campaigns
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/google_ads/ad_traffic_by_keywords/live/
+
+Purpose:
+- Estimate clicks, impressions, CTR
+- Calculate potential ad spend
+- Get bid recommendations
+
+Returns:
+- Estimated clicks per day
+- Estimated impressions
+- Average CPC estimates
+- Total cost projections
+- CTR predictions
+
+## 6. Implement Google Ads Locations and Languages endpoints [pending]
+### Dependencies: 4.1
+### Description: Retrieve supported locations and languages for Google Ads targeting
+### Details:
+Documentation:
+- Locations: https://docs.dataforseo.com/v3/keywords_data/google_ads/locations/
+- Languages: https://docs.dataforseo.com/v3/keywords_data/google_ads/languages/
+
+Purpose:
+- Get list of supported location codes
+- Get list of supported language codes
+- Cache results for efficiency
+
+Implementation:
+- Cache responses in Redis/memory
+- Provide helper methods for lookup
+- Include country/region filtering
+
+## 7. Implement Bing Ads Search Volume and Search Volume History endpoints [pending]
+### Dependencies: 4.1
+### Description: Implement Bing search volume data retrieval with historical trends
+### Details:
+Documentation:
+- Search Volume: https://docs.dataforseo.com/v3/keywords_data/bing/search_volume/live/
+- Search Volume History: https://docs.dataforseo.com/v3/keywords_data/bing/search_volume_history/live/
+
+Purpose:
+- Get current search volume on Bing
+- Retrieve historical search trends
+- Analyze seasonal patterns
+
+Returns:
+- Monthly search volume
+- Historical data (12+ months)
+- Trend indicators
+- Device-specific data
+
+## 8. Implement Bing Ads Keywords for Site and Keywords for Keywords endpoints [pending]
+### Dependencies: 4.1
+### Description: Extract keywords for websites and generate keyword suggestions on Bing
+### Details:
+Documentation:
+- Keywords for Site: https://docs.dataforseo.com/v3/keywords_data/bing/keywords_for_site/live/
+- Keywords for Keywords: https://docs.dataforseo.com/v3/keywords_data/bing/keywords_for_keywords/live/
+
+Purpose:
+- Analyze websites for Bing keywords
+- Generate Bing-specific keyword suggestions
+- Competitor analysis on Bing
+
+Returns:
+- Relevant keywords with Bing metrics
+- Search volume on Bing
+- Bing-specific competition data
+
+## 9. Implement Bing Ads Keyword Performance endpoint [pending]
+### Dependencies: 4.1
+### Description: Get detailed performance metrics for keywords on Bing including device-specific data
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/bing/keyword_performance/live/
+
+Purpose:
+- Get device-specific performance (desktop, mobile, tablet)
+- Analyze CTR by device type
+- Understand user behavior patterns
+
+Returns:
+- Click-through rates by device
+- Impressions by device
+- Position data
+- Performance trends
+- Device distribution
+
+## 10. Implement Bing Ads Keyword Suggestions for URL endpoint [pending]
+### Dependencies: 4.1
+### Description: Generate AI-powered keyword suggestions based on landing page content analysis
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/bing/keyword_suggestions_for_url/live/
+
+Purpose:
+- AI-powered content analysis
+- Extract contextual keywords from landing pages
+- Automated keyword discovery
+
+Parameters:
+- target (URL to analyze)
+- language_code
+- exclude_brands
+
+Returns:
+- Contextually relevant keywords
+- Confidence scores
+- Content-based suggestions
+
+## 11. Implement Bing Ads Audience Estimation endpoint [pending]
+### Dependencies: 4.1
+### Description: Estimate audience size and demographics for Bing Ads campaigns
+### Details:
+Documentation: https://docs.dataforseo.com/v3/keywords_data/bing/audience_estimation/live/
+
+Purpose:
+- Estimate potential reach
+- Get demographic insights
+- Plan campaign budgets
+
+Returns:
+- Estimated audience size
+- Age and gender distribution
+- Geographic distribution
+- Device usage patterns
+- Reach projections
+
+## 12. Implement Bing Ads metadata endpoints (Overview, Locations, Languages) [pending]
+### Dependencies: 4.1
+### Description: Implement Bing Ads metadata retrieval for overview information, supported locations and languages
+### Details:
+Documentation:
+- Overview: https://docs.dataforseo.com/v3/keywords_data/bing/overview/
+- Locations: https://docs.dataforseo.com/v3/keywords_data/bing/locations/
+- Languages: https://docs.dataforseo.com/v3/keywords_data/bing/languages/
+
+Purpose:
+- Get Bing Ads API capabilities overview
+- Retrieve supported Bing locations
+- Retrieve supported Bing languages
+- Cache metadata for efficiency
+
+## 13. Create CLI interface with platform selection [pending]
+### Dependencies: 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.12
+### Description: Implement command-line interface that allows users to select Google Ads, Bing Ads, or both platforms for keyword operations
+### Details:
+Requirements:
+- Add --platform flag with options: google, bing, both
+- Add --endpoint flag to select specific endpoint
+- Support bulk processing from CSV files
+- Output results in JSON/CSV formats
+- Include progress indicators for bulk operations
+
+Example usage:
+python cli.py keywords --platform=google --endpoint=search_volume --keywords="marketing,seo" 
+python cli.py keywords --platform=both --endpoint=keywords_for_site --url="example.com"
+python cli.py keywords --platform=bing --endpoint=audience_estimation --keywords-file="keywords.csv"
+
