@@ -1,92 +1,102 @@
 # Task ID: 8
-# Title: Implement Competition Analysis Module
-# Status: pending
-# Dependencies: 2, 3
+# Title: Implement Landing Page Scraping Module
+# Status: done
+# Dependencies: 3, 4
 # Priority: medium
-# Description: Create module to analyze SpyFu CSV data and identify keyword opportunities and gaps
+# Description: Create module to scrape competitor landing pages using FireCrawl API and extract copy insights
 # Details:
-1. Create processors/competition_analyzer.py with the following functionality:
+1. Create processors/landing_page_scraper.py with the following functionality:
 
 ```python
-from src.data_models import CompetitorKeyword
-import pandas as pd
+from src.api_integration.firecrawl import FireCrawlClient
+from src.data_models import ScrapedCopy
+import re
 import logging
 
-class CompetitionAnalyzer:
-    def __init__(self):
-        pass
+class LandingPageScraper:
+    def __init__(self, firecrawl_client):
+        self.firecrawl_client = firecrawl_client
     
-    def analyze_spyfu_data(self, spyfu_data, user_keywords):
-        """Analyze SpyFu competitor data against user keywords"""
-        competitor_keywords = []
-        user_keyword_terms = [kw.term.lower() for kw in user_keywords]
+    def scrape_landing_pages(self, urls):
+        """Scrape landing pages using FireCrawl API"""
+        scraped_data = []
         
-        for item in spyfu_data:
-            # Create CompetitorKeyword object
-            competitor_kw = CompetitorKeyword(
-                term=item['Keyword'],
-                volume=item.get('Volume'),
-                cpc=item.get('CPC')
-            )
-            
-            # Check for overlap with user keywords
-            if competitor_kw.term.lower() in user_keyword_terms:
-                competitor_kw.overlap = True
-                competitor_kw.recommendation = "Already in your keyword list"
-            else:
-                # Analyze potential value
-                if competitor_kw.volume and competitor_kw.cpc:
-                    if competitor_kw.volume > 100 and competitor_kw.cpc > 5.0:
-                        competitor_kw.recommendation = "High value - consider adding"
-                    elif competitor_kw.volume > 50 and competitor_kw.cpc > 3.0:
-                        competitor_kw.recommendation = "Medium value - consider adding"
-                    else:
-                        competitor_kw.recommendation = "Low value - monitor"
-                else:
-                    competitor_kw.recommendation = "Insufficient data for recommendation"
-            
-            competitor_keywords.append(competitor_kw)
+        for url in urls:
+            try:
+                # Get page content from FireCrawl
+                page_content = self.firecrawl_client.scrape_url(url)
+                
+                # Extract relevant content
+                scraped_copy = self._extract_copy(url, page_content)
+                scraped_data.append(scraped_copy)
+                
+            except Exception as e:
+                logging.error(f"Error scraping URL '{url}': {e}")
+                # Add empty record to maintain URL in output
+                scraped_data.append(ScrapedCopy(url=url))
         
-        return competitor_keywords
+        return scraped_data
     
-    def identify_gaps(self, competitor_keywords, user_keywords):
-        """Identify keyword gaps and opportunities"""
-        # Find high-value keywords not in user list
-        opportunities = []
+    def _extract_copy(self, url, page_content):
+        """Extract headlines, CTAs, and body text from page content"""
+        # Extract headline (usually in h1 tag)
+        headline_match = re.search(r'<h1[^>]*>(.*?)</h1>', page_content, re.DOTALL)
+        headline = self._clean_text(headline_match.group(1)) if headline_match else None
         
-        for kw in competitor_keywords:
-            if not kw.overlap and "High value" in kw.recommendation:
-                opportunities.append(kw)
+        # Extract CTA (buttons, forms, etc.)
+        cta_matches = re.findall(r'<button[^>]*>(.*?)</button>|<input[^>]*type=["\']submit["\'][^>]*value=["\']([^"\']*)', page_content)
+        cta = self._clean_text(cta_matches[0][0] or cta_matches[0][1]) if cta_matches else None
         
-        # Sort by potential value (volume * cpc)
-        opportunities.sort(
-            key=lambda x: (x.volume or 0) * (x.cpc or 0),
-            reverse=True
+        # Extract body snippet (p tags near the top)
+        body_match = re.search(r'<p[^>]*>(.*?)</p>', page_content, re.DOTALL)
+        body_snippet = self._clean_text(body_match.group(1)) if body_match else None
+        
+        return ScrapedCopy(
+            url=url,
+            headline=headline,
+            body_snippet=body_snippet,
+            cta=cta
         )
-        
-        return opportunities[:100]  # Return top 100 opportunities
     
-    def generate_report(self, competitor_keywords, opportunities):
-        """Generate competition analysis report"""
-        report = {
-            'total_competitor_keywords': len(competitor_keywords),
-            'overlapping_keywords': sum(1 for kw in competitor_keywords if kw.overlap),
-            'opportunities': len(opportunities),
-            'top_opportunities': [{
-                'term': kw.term,
-                'volume': kw.volume,
-                'cpc': kw.cpc,
-                'estimated_value': (kw.volume or 0) * (kw.cpc or 0)
-            } for kw in opportunities[:10]]
-        }
+    def _clean_text(self, text):
+        """Clean extracted text by removing HTML tags and normalizing whitespace"""
+        if not text:
+            return None
+            
+        # Remove remaining HTML tags
+        text = re.sub(r'<[^>]*>', '', text)
         
-        return report
+        # Normalize whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        
+        return text
+    
+    def analyze_copy_trends(self, scraped_data):
+        """Analyze trends in scraped copy"""
+        # Count word frequencies in headlines
+        headline_words = {}
+        for item in scraped_data:
+            if item.headline:
+                for word in item.headline.lower().split():
+                    if len(word) > 3:  # Skip short words
+                        headline_words[word] = headline_words.get(word, 0) + 1
+        
+        # Find common CTAs
+        cta_phrases = {}
+        for item in scraped_data:
+            if item.cta:
+                cta_phrases[item.cta] = cta_phrases.get(item.cta, 0) + 1
+        
+        return {
+            'common_headline_words': sorted(headline_words.items(), key=lambda x: x[1], reverse=True)[:10],
+            'common_ctas': sorted(cta_phrases.items(), key=lambda x: x[1], reverse=True)[:5]
+        }
 ```
 
-2. Implement logic to identify high-value competitor keywords
-3. Add functionality to detect keyword gaps in user's list
-4. Create methods to suggest new keywords based on competitor data
-5. Implement export functionality for competition analysis reports
+2. Implement more sophisticated HTML parsing using BeautifulSoup if needed
+3. Add functionality to extract pricing information when available
+4. Create methods to identify common phrases and selling points
+5. Implement export functionality for scraped copy insights
 
 # Test Strategy:
-Test analysis with sample SpyFu data. Verify overlap detection works correctly. Test opportunity identification with various threshold values. Ensure report generation includes all required metrics. Test with edge cases like empty inputs and missing data fields.
+Test scraping with sample HTML content. Verify extraction of headlines, CTAs, and body text. Test with various HTML structures. Ensure error handling for failed requests. Test trend analysis with multiple pages. Verify cleaning of HTML tags works correctly.

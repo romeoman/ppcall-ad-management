@@ -1,7 +1,7 @@
 """Competition analysis data models."""
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator, HttpUrl
+from pydantic import BaseModel, Field, field_validator, model_validator, HttpUrl
 from datetime import datetime
 from .keyword_models import Keyword, KeywordMetrics
 
@@ -138,6 +138,78 @@ class SpyFuData(BaseModel):
                 "clicks_per_search": self.clicks_per_search,
             }
         )
+
+
+class ScrapedCopy(BaseModel):
+    """Landing page copy extracted from competitor websites."""
+    url: str = Field(..., description="URL of the scraped page")
+    domain: Optional[str] = Field(default=None, description="Domain of the website")
+    headline: Optional[str] = Field(None, description="Main headline (H1)")
+    subheadline: Optional[str] = Field(None, description="Subheadline (H2)")
+    body_snippet: Optional[str] = Field(None, max_length=1000, description="Main body text snippet")
+    cta: Optional[str] = Field(None, description="Primary call to action")
+    secondary_ctas: List[str] = Field(default_factory=list, description="Secondary CTAs")
+    pricing: Optional[str] = Field(None, description="Pricing information if found")
+    features: List[str] = Field(default_factory=list, description="Listed features or benefits")
+    testimonials: List[str] = Field(default_factory=list, description="Customer testimonials")
+    meta_title: Optional[str] = Field(None, description="Page meta title")
+    meta_description: Optional[str] = Field(None, description="Page meta description")
+    scraped_at: datetime = Field(default_factory=datetime.now)
+    scrape_success: bool = Field(default=True)
+    error_message: Optional[str] = Field(None, description="Error if scraping failed")
+    
+    @field_validator('url')
+    def validate_url(cls, v):
+        """Ensure URL is valid."""
+        if not v.startswith(('http://', 'https://')):
+            v = f'https://{v}'
+        return v
+    
+    @model_validator(mode='after')
+    def extract_domain(self):
+        """Extract domain from URL if not provided."""
+        if not self.domain and self.url:
+            from urllib.parse import urlparse
+            parsed = urlparse(self.url)
+            self.domain = parsed.netloc or ""
+        return self
+    
+    def get_word_count(self) -> Dict[str, int]:
+        """Get word count for different copy elements."""
+        counts = {}
+        if self.headline:
+            counts['headline'] = len(self.headline.split())
+        if self.body_snippet:
+            counts['body'] = len(self.body_snippet.split())
+        if self.cta:
+            counts['cta'] = len(self.cta.split())
+        return counts
+    
+    def extract_keywords(self, min_length: int = 4) -> List[str]:
+        """Extract potential keywords from copy."""
+        text = ' '.join(filter(None, [
+            self.headline,
+            self.subheadline,
+            self.body_snippet,
+            self.cta
+        ]))
+        
+        if not text:
+            return []
+        
+        # Simple keyword extraction (can be enhanced with NLP)
+        words = text.lower().split()
+        keywords = [w for w in words if len(w) >= min_length and w.isalnum()]
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique = []
+        for word in keywords:
+            if word not in seen:
+                seen.add(word)
+                unique.append(word)
+        
+        return unique[:50]  # Limit to top 50 keywords
 
 
 class CompetitorAnalysis(BaseModel):

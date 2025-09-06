@@ -4,6 +4,14 @@ import asyncio
 from typing import Dict, Any, Optional, List
 import aiohttp
 from ..base_client import BaseAPIClient
+from src.utils.error_handler import (
+    retry_with_backoff,
+    RetryConfig,
+    APIError,
+    RateLimitError,
+    handle_api_response,
+    error_logger
+)
 
 
 class BaseDataForSEOClient(BaseAPIClient):
@@ -36,6 +44,10 @@ class BaseDataForSEOClient(BaseAPIClient):
             self.auth = aiohttp.BasicAuth(self.login, self.password)
         return self
     
+    @retry_with_backoff(
+        config=RetryConfig(max_attempts=3, initial_delay=1.0, exponential_base=2.0),
+        exceptions=(aiohttp.ClientError, APIError, RateLimitError)
+    )
     async def _make_dataforseo_request(
         self,
         method: str,
@@ -44,7 +56,7 @@ class BaseDataForSEOClient(BaseAPIClient):
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Make authenticated request to DataForSEO API.
+        Make authenticated request to DataForSEO API with retry logic.
         
         Args:
             method: HTTP method (GET, POST, etc.)
@@ -54,6 +66,10 @@ class BaseDataForSEOClient(BaseAPIClient):
             
         Returns:
             API response as dictionary
+            
+        Raises:
+            APIError: If API returns an error
+            RateLimitError: If rate limit is exceeded
         """
         url = f"{self.BASE_URL}/{endpoint}"
         
@@ -61,14 +77,31 @@ class BaseDataForSEOClient(BaseAPIClient):
         if payload is not None and not isinstance(payload, list):
             payload = [payload]
         
-        # Use the retry-enabled base request with auth
-        return await self._make_request(
-            method=method,
-            url=url,
-            json=payload,
-            auth=self.auth,
-            **kwargs
-        )
+        try:
+            # Use the retry-enabled base request with auth
+            response = await self._make_request(
+                method=method,
+                url=url,
+                json=payload,
+                auth=self.auth,
+                **kwargs
+            )
+            
+            # Handle API response and check for errors
+            return handle_api_response(response)
+            
+        except Exception as e:
+            # Log error with context
+            error_logger.log_error(
+                e,
+                context={
+                    "endpoint": endpoint,
+                    "method": method,
+                    "url": url
+                },
+                user_message=f"DataForSEO API request failed for {endpoint}"
+            )
+            raise
     
     async def get_locations(self, country: Optional[str] = None) -> List[Dict[str, Any]]:
         """

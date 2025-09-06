@@ -296,7 +296,6 @@
               6,
               7,
               8,
-              9,
               10,
               11,
               12
@@ -317,8 +316,18 @@
           3,
           4
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create KeywordProcessor class structure",
+            "description": "Create processors/keyword_processor.py with KeywordProcessor class and initialize with DataForSEO client",
+            "details": "Set up the basic class structure with proper imports, initialization method accepting API clients, and logging configuration",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 5
+          }
+        ]
       },
       {
         "id": 6,
@@ -331,7 +340,7 @@
           3,
           5
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -345,35 +354,7 @@
           3,
           5
         ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 8,
-        "title": "Implement Competition Analysis Module",
-        "description": "Create module to analyze SpyFu CSV data and identify keyword opportunities and gaps",
-        "details": "1. Create processors/competition_analyzer.py with the following functionality:\n\n```python\nfrom src.data_models import CompetitorKeyword\nimport pandas as pd\nimport logging\n\nclass CompetitionAnalyzer:\n    def __init__(self):\n        pass\n    \n    def analyze_spyfu_data(self, spyfu_data, user_keywords):\n        \"\"\"Analyze SpyFu competitor data against user keywords\"\"\"\n        competitor_keywords = []\n        user_keyword_terms = [kw.term.lower() for kw in user_keywords]\n        \n        for item in spyfu_data:\n            # Create CompetitorKeyword object\n            competitor_kw = CompetitorKeyword(\n                term=item['Keyword'],\n                volume=item.get('Volume'),\n                cpc=item.get('CPC')\n            )\n            \n            # Check for overlap with user keywords\n            if competitor_kw.term.lower() in user_keyword_terms:\n                competitor_kw.overlap = True\n                competitor_kw.recommendation = \"Already in your keyword list\"\n            else:\n                # Analyze potential value\n                if competitor_kw.volume and competitor_kw.cpc:\n                    if competitor_kw.volume > 100 and competitor_kw.cpc > 5.0:\n                        competitor_kw.recommendation = \"High value - consider adding\"\n                    elif competitor_kw.volume > 50 and competitor_kw.cpc > 3.0:\n                        competitor_kw.recommendation = \"Medium value - consider adding\"\n                    else:\n                        competitor_kw.recommendation = \"Low value - monitor\"\n                else:\n                    competitor_kw.recommendation = \"Insufficient data for recommendation\"\n            \n            competitor_keywords.append(competitor_kw)\n        \n        return competitor_keywords\n    \n    def identify_gaps(self, competitor_keywords, user_keywords):\n        \"\"\"Identify keyword gaps and opportunities\"\"\"\n        # Find high-value keywords not in user list\n        opportunities = []\n        \n        for kw in competitor_keywords:\n            if not kw.overlap and \"High value\" in kw.recommendation:\n                opportunities.append(kw)\n        \n        # Sort by potential value (volume * cpc)\n        opportunities.sort(\n            key=lambda x: (x.volume or 0) * (x.cpc or 0),\n            reverse=True\n        )\n        \n        return opportunities[:100]  # Return top 100 opportunities\n    \n    def generate_report(self, competitor_keywords, opportunities):\n        \"\"\"Generate competition analysis report\"\"\"\n        report = {\n            'total_competitor_keywords': len(competitor_keywords),\n            'overlapping_keywords': sum(1 for kw in competitor_keywords if kw.overlap),\n            'opportunities': len(opportunities),\n            'top_opportunities': [{\n                'term': kw.term,\n                'volume': kw.volume,\n                'cpc': kw.cpc,\n                'estimated_value': (kw.volume or 0) * (kw.cpc or 0)\n            } for kw in opportunities[:10]]\n        }\n        \n        return report\n```\n\n2. Implement logic to identify high-value competitor keywords\n3. Add functionality to detect keyword gaps in user's list\n4. Create methods to suggest new keywords based on competitor data\n5. Implement export functionality for competition analysis reports",
-        "testStrategy": "Test analysis with sample SpyFu data. Verify overlap detection works correctly. Test opportunity identification with various threshold values. Ensure report generation includes all required metrics. Test with edge cases like empty inputs and missing data fields.",
-        "priority": "medium",
-        "dependencies": [
-          2,
-          3
-        ],
-        "status": "pending",
-        "subtasks": []
-      },
-      {
-        "id": 9,
-        "title": "Implement Landing Page Scraping Module",
-        "description": "Create module to scrape competitor landing pages using FireCrawl API and extract copy insights",
-        "details": "1. Create processors/landing_page_scraper.py with the following functionality:\n\n```python\nfrom src.api_integration.firecrawl import FireCrawlClient\nfrom src.data_models import ScrapedCopy\nimport re\nimport logging\n\nclass LandingPageScraper:\n    def __init__(self, firecrawl_client):\n        self.firecrawl_client = firecrawl_client\n    \n    def scrape_landing_pages(self, urls):\n        \"\"\"Scrape landing pages using FireCrawl API\"\"\"\n        scraped_data = []\n        \n        for url in urls:\n            try:\n                # Get page content from FireCrawl\n                page_content = self.firecrawl_client.scrape_url(url)\n                \n                # Extract relevant content\n                scraped_copy = self._extract_copy(url, page_content)\n                scraped_data.append(scraped_copy)\n                \n            except Exception as e:\n                logging.error(f\"Error scraping URL '{url}': {e}\")\n                # Add empty record to maintain URL in output\n                scraped_data.append(ScrapedCopy(url=url))\n        \n        return scraped_data\n    \n    def _extract_copy(self, url, page_content):\n        \"\"\"Extract headlines, CTAs, and body text from page content\"\"\"\n        # Extract headline (usually in h1 tag)\n        headline_match = re.search(r'<h1[^>]*>(.*?)</h1>', page_content, re.DOTALL)\n        headline = self._clean_text(headline_match.group(1)) if headline_match else None\n        \n        # Extract CTA (buttons, forms, etc.)\n        cta_matches = re.findall(r'<button[^>]*>(.*?)</button>|<input[^>]*type=[\"\\']submit[\"\\'][^>]*value=[\"\\']([^\"\\']*)', page_content)\n        cta = self._clean_text(cta_matches[0][0] or cta_matches[0][1]) if cta_matches else None\n        \n        # Extract body snippet (p tags near the top)\n        body_match = re.search(r'<p[^>]*>(.*?)</p>', page_content, re.DOTALL)\n        body_snippet = self._clean_text(body_match.group(1)) if body_match else None\n        \n        return ScrapedCopy(\n            url=url,\n            headline=headline,\n            body_snippet=body_snippet,\n            cta=cta\n        )\n    \n    def _clean_text(self, text):\n        \"\"\"Clean extracted text by removing HTML tags and normalizing whitespace\"\"\"\n        if not text:\n            return None\n            \n        # Remove remaining HTML tags\n        text = re.sub(r'<[^>]*>', '', text)\n        \n        # Normalize whitespace\n        text = re.sub(r'\\s+', ' ', text).strip()\n        \n        return text\n    \n    def analyze_copy_trends(self, scraped_data):\n        \"\"\"Analyze trends in scraped copy\"\"\"\n        # Count word frequencies in headlines\n        headline_words = {}\n        for item in scraped_data:\n            if item.headline:\n                for word in item.headline.lower().split():\n                    if len(word) > 3:  # Skip short words\n                        headline_words[word] = headline_words.get(word, 0) + 1\n        \n        # Find common CTAs\n        cta_phrases = {}\n        for item in scraped_data:\n            if item.cta:\n                cta_phrases[item.cta] = cta_phrases.get(item.cta, 0) + 1\n        \n        return {\n            'common_headline_words': sorted(headline_words.items(), key=lambda x: x[1], reverse=True)[:10],\n            'common_ctas': sorted(cta_phrases.items(), key=lambda x: x[1], reverse=True)[:5]\n        }\n```\n\n2. Implement more sophisticated HTML parsing using BeautifulSoup if needed\n3. Add functionality to extract pricing information when available\n4. Create methods to identify common phrases and selling points\n5. Implement export functionality for scraped copy insights",
-        "testStrategy": "Test scraping with sample HTML content. Verify extraction of headlines, CTAs, and body text. Test with various HTML structures. Ensure error handling for failed requests. Test trend analysis with multiple pages. Verify cleaning of HTML tags works correctly.",
-        "priority": "medium",
-        "dependencies": [
-          3,
-          4
-        ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -388,10 +369,9 @@
           5,
           6,
           7,
-          8,
-          9
+          8
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -400,12 +380,81 @@
         "description": "Create isolated project folder structure with inputs/, configs/, outputs/ subdirectories for campaign reusability",
         "details": "Implement a project management system that creates isolated folders for each campaign (e.g., projects/plumbing_campaign/). Each project should be self-contained with its own inputs, configurations, and outputs. This enables easy cloning and recreation of campaigns across different niches without code changes.",
         "testStrategy": "Unit tests for folder creation, configuration loading, and project validation. Integration tests for project cloning and updates.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           1
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design project folder structure and architecture",
+            "description": "Define the complete folder hierarchy for campaign projects including inputs/, configs/, outputs/ subdirectories",
+            "details": "Design a standardized folder structure for each campaign project with clear separation of inputs (seed keywords, locations, categories, competitor URLs), configurations (API settings, campaign parameters), and outputs (generated keywords, ad groups, reports). Document the structure in a specification.",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 11
+          },
+          {
+            "id": 2,
+            "title": "Create ProjectManager class with core operations",
+            "description": "Implement the main ProjectManager class with methods for project creation, validation, and management",
+            "details": "Create src/project_manager/project_manager.py with ProjectManager class. Include methods for create_project(), validate_project_structure(), list_projects(), get_project_path(). Use pathlib for cross-platform path handling.",
+            "status": "done",
+            "dependencies": [
+              1
+            ],
+            "parentTaskId": 11
+          },
+          {
+            "id": 3,
+            "title": "Implement project configuration management",
+            "description": "Create configuration system for storing and loading project settings",
+            "details": "Implement ProjectConfig class to manage campaign settings like target platforms (Google/Bing), locations, budget parameters, and API configurations. Store configs as JSON in configs/project_config.json. Include methods for loading, saving, and validating configurations.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 11
+          },
+          {
+            "id": 4,
+            "title": "Implement project cloning functionality",
+            "description": "Add ability to clone existing projects for new campaigns",
+            "details": "Implement clone_project() method that copies an existing project structure to a new location, preserving configurations while clearing outputs. Allow selective cloning of inputs and configs. Update project metadata to reflect new campaign name and creation date.",
+            "status": "done",
+            "dependencies": [
+              2,
+              3
+            ],
+            "parentTaskId": 11
+          },
+          {
+            "id": 5,
+            "title": "Create project template system",
+            "description": "Implement template system with sample files for new projects",
+            "details": "Create template files for common inputs (sample_keywords.txt, sample_locations.csv, sample_categories.csv) and default configuration. Store templates in templates/ directory. Include method to initialize new project from template.",
+            "status": "done",
+            "dependencies": [
+              2
+            ],
+            "parentTaskId": 11
+          },
+          {
+            "id": 6,
+            "title": "Write comprehensive unit tests",
+            "description": "Create unit tests for all ProjectManager methods",
+            "details": "Write pytest unit tests in tests/test_project_manager.py covering project creation, validation, configuration management, cloning, and error handling. Use temporary directories for testing. Mock file operations where appropriate.",
+            "status": "done",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "parentTaskId": 11
+          }
+        ]
       },
       {
         "id": 12,
@@ -413,13 +462,68 @@
         "description": "Create command-line interface with subcommands: create, research, generate, analyze, update, export, clone",
         "details": "Develop a comprehensive CLI using argparse or click that supports all user workflows. Commands should include: create (new project), research (keyword expansion), generate (ad groups), analyze (competition), update (modify existing), export (CSV generation), and clone (duplicate project). Each command should have interactive prompts to guide users through the process.",
         "testStrategy": "CLI command tests for each subcommand, integration tests for command workflows, error handling tests for invalid inputs.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           1,
           11
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design CLI architecture and command structure",
+            "description": "Design the overall CLI architecture using argparse with subcommands for create, research, generate, analyze, update, export, and clone",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          },
+          {
+            "id": 2,
+            "title": "Implement 'create' command for project initialization",
+            "description": "Implement the 'ppc create' command to initialize new projects with interactive prompts for project name, industry, and initial configuration",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          },
+          {
+            "id": 3,
+            "title": "Implement 'research' command for keyword expansion",
+            "description": "Implement the 'ppc research' command to expand keywords using DataForSEO API with options for depth, categories, and locations",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          },
+          {
+            "id": 4,
+            "title": "Implement 'generate' command for ad group creation",
+            "description": "Implement the 'ppc generate' command to create ad groups from keywords with support for match types and location-based grouping",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          },
+          {
+            "id": 5,
+            "title": "Implement 'export' command for campaign exports",
+            "description": "Implement the 'ppc export' command to generate Google Ads and Bing Ads compatible CSV files with proper formatting",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          },
+          {
+            "id": 6,
+            "title": "Write tests for CLI commands",
+            "description": "Create comprehensive pytest tests for all CLI commands including unit tests for individual functions and integration tests for command workflows",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 12
+          }
+        ]
       },
       {
         "id": 13,
@@ -427,7 +531,7 @@
         "description": "Create functionality to clone existing projects for new niches and update projects without recreation",
         "details": "Implement features that enable project reusability: clone command to duplicate a project with adapted configurations for new niches, and update command to modify existing projects without starting from scratch. This ensures the app is not 'one-and-done' but a scalable tool for ongoing campaigns.",
         "testStrategy": "Tests for project cloning with configuration changes, update operations preserving existing data, version control compatibility tests.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           11,
           12
@@ -441,13 +545,12 @@
         "description": "Create module to generate consolidated CSV exports and ZIP archives with proper Google Ads formatting",
         "details": "Develop export functionality that generates all outputs as CSV files with consistent column formatting for Google Ads. Include ability to create consolidated ZIP archives for easy sharing. Log summaries of generated data (e.g., '500 keywords generated'). Ensure all CSV formats are 100% compatible with Google Ads import requirements.",
         "testStrategy": "CSV format validation tests, Google Ads compatibility tests, ZIP archive creation tests, summary logging tests.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           5,
           6,
           7,
-          8,
-          9
+          8
         ],
         "priority": "high",
         "subtasks": []
@@ -458,17 +561,61 @@
         "description": "Create comprehensive error handling with retry logic, partial completion support, and resume functionality",
         "details": "Implement robust error handling that includes: exponential backoff for failed API calls, contextual error logging, user-friendly error messages, support for partial completion with clear status, and resume functionality for interrupted runs. This ensures reliability even with API rate limits or network issues.",
         "testStrategy": "Error simulation tests, retry mechanism tests, partial completion tests, resume functionality tests.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           4
         ],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Implement Competition Analysis Module",
+        "description": "Create module to analyze competitor websites using DataForSEO APIs and identify keyword opportunities and gaps",
+        "details": "Implement a competition analyzer that uses DataForSEO's Keywords for Site endpoint to extract keywords from competitor websites. Compare competitor keywords with campaign seed keywords to identify gaps and opportunities. Generate reports showing overlapping keywords, missing high-value keywords, and recommendations for campaign expansion.",
+        "testStrategy": "Unit tests for competitor keyword extraction, gap analysis logic, and report generation. Integration tests with DataForSEO API mocks.",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement Competition Analysis Processor",
+        "description": "Create module to analyze SpyFu competition data and identify keyword opportunities",
+        "details": "Create processors/competition_analyzer.py with functionality to analyze SpyFu CSV exports, compare competitor keywords with campaign keywords, identify gaps and opportunities, and generate competition reports with recommendations",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [
+          2,
+          3,
+          4
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Landing Page Scraping Module",
+        "description": "Create module to scrape competitor landing pages using FireCrawl API and extract copy insights",
+        "details": "1. Create processors/landing_page_scraper.py with the following functionality:\n\n```python\nfrom src.api_integration.firecrawl import FireCrawlClient\nfrom src.data_models import ScrapedCopy\nimport re\nimport logging\n\nclass LandingPageScraper:\n    def __init__(self, firecrawl_client):\n        self.firecrawl_client = firecrawl_client\n    \n    def scrape_landing_pages(self, urls):\n        \"\"\"Scrape landing pages using FireCrawl API\"\"\"\n        scraped_data = []\n        \n        for url in urls:\n            try:\n                # Get page content from FireCrawl\n                page_content = self.firecrawl_client.scrape_url(url)\n                \n                # Extract relevant content\n                scraped_copy = self._extract_copy(url, page_content)\n                scraped_data.append(scraped_copy)\n                \n            except Exception as e:\n                logging.error(f\"Error scraping URL '{url}': {e}\")\n                # Add empty record to maintain URL in output\n                scraped_data.append(ScrapedCopy(url=url))\n        \n        return scraped_data\n    \n    def _extract_copy(self, url, page_content):\n        \"\"\"Extract headlines, CTAs, and body text from page content\"\"\"\n        # Extract headline (usually in h1 tag)\n        headline_match = re.search(r'<h1[^>]*>(.*?)</h1>', page_content, re.DOTALL)\n        headline = self._clean_text(headline_match.group(1)) if headline_match else None\n        \n        # Extract CTA (buttons, forms, etc.)\n        cta_matches = re.findall(r'<button[^>]*>(.*?)</button>|<input[^>]*type=[\"\\']submit[\"\\'][^>]*value=[\"\\']([^\"\\']*)', page_content)\n        cta = self._clean_text(cta_matches[0][0] or cta_matches[0][1]) if cta_matches else None\n        \n        # Extract body snippet (p tags near the top)\n        body_match = re.search(r'<p[^>]*>(.*?)</p>', page_content, re.DOTALL)\n        body_snippet = self._clean_text(body_match.group(1)) if body_match else None\n        \n        return ScrapedCopy(\n            url=url,\n            headline=headline,\n            body_snippet=body_snippet,\n            cta=cta\n        )\n    \n    def _clean_text(self, text):\n        \"\"\"Clean extracted text by removing HTML tags and normalizing whitespace\"\"\"\n        if not text:\n            return None\n            \n        # Remove remaining HTML tags\n        text = re.sub(r'<[^>]*>', '', text)\n        \n        # Normalize whitespace\n        text = re.sub(r'\\s+', ' ', text).strip()\n        \n        return text\n    \n    def analyze_copy_trends(self, scraped_data):\n        \"\"\"Analyze trends in scraped copy\"\"\"\n        # Count word frequencies in headlines\n        headline_words = {}\n        for item in scraped_data:\n            if item.headline:\n                for word in item.headline.lower().split():\n                    if len(word) > 3:  # Skip short words\n                        headline_words[word] = headline_words.get(word, 0) + 1\n        \n        # Find common CTAs\n        cta_phrases = {}\n        for item in scraped_data:\n            if item.cta:\n                cta_phrases[item.cta] = cta_phrases.get(item.cta, 0) + 1\n        \n        return {\n            'common_headline_words': sorted(headline_words.items(), key=lambda x: x[1], reverse=True)[:10],\n            'common_ctas': sorted(cta_phrases.items(), key=lambda x: x[1], reverse=True)[:5]\n        }\n```\n\n2. Implement more sophisticated HTML parsing using BeautifulSoup if needed\n3. Add functionality to extract pricing information when available\n4. Create methods to identify common phrases and selling points\n5. Implement export functionality for scraped copy insights",
+        "testStrategy": "Test scraping with sample HTML content. Verify extraction of headlines, CTAs, and body text. Test with various HTML structures. Ensure error handling for failed requests. Test trend analysis with multiple pages. Verify cleaning of HTML tags works correctly.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4
+        ],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-08-25T14:50:58.211Z",
-      "updated": "2025-08-26T17:52:41.165Z",
+      "updated": "2025-09-06T09:53:54.053Z",
       "description": "Tasks for master context"
     }
   }

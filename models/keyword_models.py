@@ -128,3 +128,45 @@ class SeedKeyword(BaseModel):
     def clean_term(cls, v):
         """Clean and normalize seed keyword."""
         return v.strip().lower()
+
+
+class ExpandedKeyword(BaseModel):
+    """Expanded keyword with full metadata for processing."""
+    keyword: str = Field(..., min_length=1, max_length=500, description="The keyword term")
+    seed_keyword: str = Field(..., description="Original seed keyword this was expanded from")
+    category: str = Field(default="general", description="Keyword category")
+    search_volume: int = Field(default=0, ge=0, description="Monthly search volume")
+    competition: float = Field(default=0, ge=0, le=1, description="Competition score (0-1)")
+    cpc: float = Field(default=0, ge=0, description="Cost per click")
+    platform: str = Field(..., description="Platform (google_ads or bing_ads)")
+    location_code: int = Field(..., description="Location code for targeting")
+    language_code: str = Field(default="en", description="Language code")
+    location_type: Optional[str] = Field(None, description="Type of location combination")
+    location_value: Optional[str] = Field(None, description="Location value (city, zip, etc)")
+    match_type: MatchType = Field(default=MatchType.BROAD)
+    created_at: datetime = Field(default_factory=datetime.now)
+    
+    @field_validator('keyword')
+    def clean_keyword(cls, v):
+        """Clean and normalize keyword."""
+        return v.strip().lower()
+    
+    @field_validator('cpc')
+    def validate_cpc(cls, v):
+        """Round CPC to 2 decimal places."""
+        return round(v, 2)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for export."""
+        return {
+            'keyword': self.keyword,
+            'seed_keyword': self.seed_keyword,
+            'category': self.category,
+            'search_volume': self.search_volume,
+            'competition': self.competition,
+            'cpc': self.cpc,
+            'platform': self.platform,
+            'location_type': self.location_type,
+            'location_value': self.location_value,
+            'match_type': self.match_type.value if isinstance(self.match_type, MatchType) else self.match_type
+        }
