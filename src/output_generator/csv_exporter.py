@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 
 from models.keyword_models import Keyword, NegativeKeyword
 from models.ad_group_models import AdGroup
-from models.competition_models import CompetitorKeyword, ScrapedCopy
+from models.competition_models import CompetitorKeyword, ScrapedCopy, KeywordGap
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +151,66 @@ class CSVExporter:
             })
         
         return self._export_to_csv(data, filename, "competition report")
+    
+    def export_competition_gaps(self, keyword_gaps: List[KeywordGap],
+                               filename: str = 'keyword_gaps.csv') -> Path:
+        """
+        Export keyword gap analysis to CSV.
+        
+        Args:
+            keyword_gaps: List of KeywordGap objects
+            filename: Output filename
+            
+        Returns:
+            Path to exported file
+        """
+        data = []
+        for gap in keyword_gaps:
+            data.append({
+                'Keyword': gap.keyword.term,
+                'Gap Type': gap.gap_type,
+                'Our Position': gap.our_position or 'Not Ranking',
+                'Best Competitor Position': gap.best_competitor_position or '',
+                'Competitor Domains': ', '.join(gap.competitor_domains) if gap.competitor_domains else '',
+                'Search Volume': gap.keyword.metrics.search_volume if gap.keyword.metrics else 0,
+                'CPC': gap.keyword.metrics.cpc if gap.keyword.metrics else 0,
+                'Competition': gap.keyword.metrics.competition if gap.keyword.metrics else 0,
+                'Priority': gap.priority,
+                'Potential Traffic': gap.potential_traffic or 0,
+                'Opportunity Score': f"{gap.calculate_opportunity_score():.2f}",
+                'Recommendation': gap.recommendation
+            })
+        
+        return self._export_to_csv(data, filename, "keyword gaps")
+    
+    def export_competitor_keywords(self, competitor_keywords: List[CompetitorKeyword],
+                                  filename: str = 'competitor_keywords.csv') -> Path:
+        """
+        Export competitor keywords to CSV.
+        
+        Args:
+            competitor_keywords: List of CompetitorKeyword objects
+            filename: Output filename
+            
+        Returns:
+            Path to exported file
+        """
+        data = []
+        for ck in competitor_keywords:
+            data.append({
+                'Keyword': ck.keyword.term,
+                'Competitor Domain': ck.competitor_domain,
+                'Position': ck.position or '',
+                'Is Paid': 'Yes' if ck.is_paid else 'No',
+                'Search Volume': ck.keyword.metrics.search_volume if ck.keyword.metrics else 0,
+                'CPC': ck.keyword.metrics.cpc if ck.keyword.metrics else 0,
+                'Competition': ck.keyword.metrics.competition if ck.keyword.metrics else 0,
+                'Estimated Traffic': ck.estimated_traffic or 0,
+                'Ad Copy': ck.ad_copy or '',
+                'Landing Page': ck.landing_page or ''
+            })
+        
+        return self._export_to_csv(data, filename, "competitor keywords")
     
     def export_scraped_copy(self, scraped_data: List[ScrapedCopy], 
                           filename: str = 'scraped_copy.csv') -> Path:

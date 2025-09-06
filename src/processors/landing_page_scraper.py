@@ -27,6 +27,23 @@ class LandingPageScraper:
         """
         self.firecrawl_client = firecrawl_client
         
+    async def scrape_url(self, url: str) -> ScrapedCopy:
+        """
+        Scrape a single URL.
+        
+        Args:
+            url: URL to scrape
+            
+        Returns:
+            ScrapedCopy object with extracted data
+        """
+        results = await self.scrape_landing_pages([url])
+        return results[0] if results else ScrapedCopy(
+            url=url,
+            scrape_success=False,
+            error_message="Failed to scrape URL"
+        )
+    
     async def scrape_landing_pages(
         self,
         urls: List[str],
