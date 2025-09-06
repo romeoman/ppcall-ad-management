@@ -1,164 +1,276 @@
-# PPCall Ad Management System
+# PPC Campaign Manager
 
-A comprehensive Google Ads campaign management system for phone-based service businesses, focusing on keyword research, ad group organization, and competitive analysis.
+A production-ready PPC campaign management system for service businesses, automating keyword research, competitive analysis, and campaign generation for Google Ads and Bing Ads.
 
-## Overview
+## 🚀 Overview
 
-This tool automates the creation and management of Google Ads campaigns for businesses that operate via phone calls (plumbers, electricians, AC repair, etc.). It handles keyword expansion, categorization, negative keyword generation, and competitive analysis.
+PPC Campaign Manager is a comprehensive tool designed for businesses that generate leads through phone calls (plumbers, electricians, HVAC, locksmiths, etc.). It automates the entire PPC campaign creation process from keyword research to export-ready campaign structures.
 
-## Features
+## ✨ Features
 
-- **Keyword Research & Expansion**: Expand seed keywords using DataforSEO and Serper APIs
-- **Smart Categorization**: Automatically organize keywords by service and location
-- **Negative Keywords**: Generate and manage negative keywords to prevent wasted ad spend
-- **Competitive Analysis**: Process SpyFu CSV exports to identify opportunities
-- **Landing Page Insights**: Scrape competitor landing pages using Firecrawl
-- **Project Management**: Isolated project folders for campaign reusability
-- **CSV Export**: Generate Google Ads-ready CSV files
+### Core Capabilities
+- **🔍 Keyword Research & Expansion**: Leverage DataForSEO's Google Ads and Bing Ads APIs for comprehensive keyword discovery
+- **📊 Competitive Analysis**: Analyze competitor websites, identify keyword gaps, and discover opportunities
+- **📈 SpyFu Integration**: Process SpyFu exports to gain competitive insights
+- **🌐 Landing Page Analysis**: Scrape and analyze competitor landing pages with FireCrawl
+- **🎯 Smart Ad Group Generation**: Automatically organize keywords into tightly-themed ad groups
+- **🚫 Negative Keywords**: AI-powered negative keyword generation to reduce wasted spend
+- **📍 Location Targeting**: Create location-specific campaigns with city-level targeting
+- **📁 Project Management**: Isolated project folders for multi-client campaign management
+- **📤 Export Formats**: Google Ads Editor, Bing Ads, and CSV export formats
 
-## Installation
+### Advanced Features
+- **Error Handling**: Robust retry logic with exponential backoff for API reliability
+- **Progress Tracking**: Resume interrupted operations from last checkpoint
+- **Caching System**: Intelligent caching to reduce API costs and improve speed
+- **Batch Processing**: Efficient handling of large keyword lists
+- **Multi-Platform Support**: Simultaneous Google Ads and Bing Ads campaign creation
+
+## 📦 Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.8+
 - Git
+- API credentials (at least DataForSEO is required)
 
-### Setup
+### Quick Start
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
 git clone <repository-url>
 cd "Ad Management"
 ```
 
-2. Create and activate virtual environment:
+2. **Set up virtual environment:**
 ```bash
 python3 -m venv venv_linux
 source venv_linux/bin/activate  # On Linux/Mac
+# or
+venv_linux\Scripts\activate     # On Windows
 ```
 
-3. Install dependencies:
+3. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configure API keys:
+4. **Configure API credentials:**
 ```bash
 cp .env.example .env
-# Edit .env and add your API credentials:
-# - DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD
-# - SERPER_API_KEY
-# - FIRECRAWL_API_KEY
+nano .env  # Add your credentials:
 ```
 
-## Project Structure
+Required credentials:
+```env
+# DataForSEO (Required)
+DATAFORSEO_LOGIN=your_login
+DATAFORSEO_PASSWORD=your_password
+
+# FireCrawl (Optional - for landing page analysis)
+FIRECRAWL_API_KEY=your_api_key
+
+# Serper (Optional - alternative keyword source)
+SERPER_API_KEY=your_api_key
+```
+
+## 📁 Project Structure
 
 ```
 Ad Management/
-├── src/                    # Source code
-│   ├── api/               # API integrations
-│   ├── core/              # Core business logic
-│   ├── input_parser/      # Input parsing and validation
-│   ├── models/            # Pydantic data models
-│   ├── output_generator/  # CSV and report generation
-│   ├── processors/        # Data processing modules
-│   └── utils/             # Utility functions
-├── projects/              # Campaign projects
-├── tests/                 # Unit and integration tests
-├── docs/                  # Documentation
-├── examples/              # Example files
-└── requirements.txt       # Python dependencies
+├── src/
+│   ├── api_integration/       # External API clients
+│   │   ├── dataforseo/       # DataForSEO integration
+│   │   ├── serper_client.py  # Serper API client
+│   │   └── firecrawl_client.py # FireCrawl client
+│   ├── cli_commands/         # CLI command implementations
+│   ├── input_parser/         # Input file parsers
+│   ├── output_generator/     # Export and reporting
+│   ├── processors/           # Data processing modules
+│   │   ├── keyword_processor.py
+│   │   ├── ad_group_processor.py
+│   │   ├── competition_analyzer.py
+│   │   └── landing_page_scraper.py
+│   ├── project_manager/      # Project management
+│   └── utils/                # Utilities and helpers
+├── models/                   # Pydantic data models
+├── projects/                 # Campaign project storage
+├── tests/                    # Comprehensive test suite
+├── docs/                     # Documentation
+├── ppc.py                    # Main CLI entry point
+├── cli_dataforseo.py        # DataForSEO CLI tool
+└── requirements.txt          # Dependencies
 ```
 
-## Usage
+## 🎯 Usage
 
-### CLI Commands (Coming Soon)
+### Available CLIs
+
+The system provides two command-line interfaces:
+
+1. **`ppc.py`** - Main campaign management CLI
+2. **`cli_dataforseo.py`** - Direct DataForSEO API access
+
+### Quick Start Example
 
 ```bash
-# Create new campaign project
-ppcall create --project "plumber-miami" --seed-keywords "plumber,plumbing"
+# 1. Create a new project
+python ppc.py create "plumber-miami"
 
-# Research keywords
-ppcall research --project "plumber-miami" --categories "emergency,repair,installation"
+# 2. Add seed keywords to projects/plumber-miami/inputs/keywords/seed_keywords.txt
+echo "plumber\nplumbing repair\nemergency plumber" > projects/plumber-miami/inputs/keywords/seed_keywords.txt
 
-# Generate ad groups
-ppcall generate --project "plumber-miami" --locations "Miami,Miami Beach,Coral Gables"
+# 3. Research and expand keywords
+python ppc.py research --project "plumber-miami" --min-volume 100 --max-cpc 50
 
-# Analyze competition
-ppcall analyze --project "plumber-miami" --spyfu "competitors.csv"
+# 4. Analyze competition
+python ppc.py analyze --project "plumber-miami" --scrape-landing-pages
 
-# Export campaign
-ppcall export --project "plumber-miami" --format csv
+# 5. Generate ad groups
+python ppc.py generate --project "plumber-miami" --match-types exact
 
-# Clone project for new market
-ppcall clone --source "plumber-miami" --target "plumber-orlando" --location "Orlando"
+# 6. Export for Google Ads
+python ppc.py export --project "plumber-miami" --format google
 ```
 
-### Project Workflow
-
-1. **Create Project**: Initialize a new campaign project folder
-2. **Add Inputs**: Seed keywords, categories, locations, competitor data
-3. **Research**: Expand keywords and gather search volume data
-4. **Organize**: Create ad groups based on service/location combinations
-5. **Analyze**: Review competition and identify opportunities
-6. **Export**: Generate CSV files for Google Ads import
-
-## API Configuration
-
-### DataforSEO
-- Used for keyword expansion and search volume data
-- Requires login and password
-- [Sign up here](https://dataforseo.com/)
-
-### Serper
-- Alternative/supplementary keyword research
-- Requires API key
-- [Get API key](https://serper.dev/)
-
-### Firecrawl
-- Web scraping for competitor landing pages
-- Requires API key
-- [Get API key](https://firecrawl.dev/)
-
-## Development
-
-### Running Tests
+### DataForSEO CLI Usage
 
 ```bash
-# Activate virtual environment
-source venv_linux/bin/activate
+# Get search volume for keywords
+python cli_dataforseo.py keywords \
+    --platform=google \
+    --endpoint=search_volume \
+    --keywords="plumber miami,emergency plumber" \
+    --location=2840
 
+# Analyze competitor website
+python cli_dataforseo.py keywords \
+    --platform=google \
+    --endpoint=keywords_for_site \
+    --url="competitor.com" \
+    --limit=500
+
+# Compare Google vs Bing
+python cli_dataforseo.py keywords \
+    --platform=both \
+    --endpoint=search_volume \
+    --keywords-file="keywords.csv"
+```
+
+## 🔧 Key Components
+
+### Keyword Processor
+- Expands seed keywords using multiple data sources
+- Filters by search volume, CPC, and competition
+- Categorizes keywords by service type and intent
+- Supports location-based keyword variations
+
+### Competition Analyzer
+- Analyzes competitor websites using DataForSEO's Keywords for Site API
+- Processes SpyFu CSV exports for historical data
+- Identifies keyword gaps and opportunities
+- Calculates opportunity scores based on volume and competition
+
+### Ad Group Processor
+- Creates tightly-themed ad groups (15-25 keywords)
+- Supports multiple match types (broad, phrase, exact)
+- Implements SKAG (Single Keyword Ad Groups) for high-value terms
+- Location-based campaign splitting
+
+### Landing Page Scraper
+- Extracts competitor landing page content
+- Identifies CTAs, value propositions, and features
+- Analyzes meta tags and structured data
+- Provides insights for ad copy creation
+
+## 📊 Competition Analysis Features
+
+The system provides comprehensive competitive intelligence:
+
+1. **Keyword Gap Analysis**
+   - Missing keywords (competitors rank, you don't)
+   - Underperforming keywords (competitors rank better)
+   - Opportunity keywords (high volume, low competition)
+
+2. **Competitor Metrics**
+   - Organic vs paid keyword distribution
+   - Average positions and rankings
+   - Estimated traffic and costs
+   - Domain authority indicators
+
+3. **Landing Page Insights**
+   - Headlines and value propositions
+   - Call-to-action analysis
+   - Feature comparisons
+   - Pricing strategies
+
+## 🧪 Testing
+
+The project includes comprehensive test coverage:
+
+```bash
 # Run all tests
 pytest
 
-# Run with coverage
-pytest --cov=src tests/
+# Run specific test modules
+pytest tests/test_processors/
+pytest tests/test_api_integration/
+
+# Run with coverage report
+pytest --cov=src --cov-report=html
+
+# Run tests in verbose mode
+pytest -v
 ```
 
-### Code Quality
+## 📖 Documentation
 
-```bash
-# Format code
-black src/ tests/
+- **[User Guide](USER_GUIDE.md)** - Complete usage instructions and workflows
+- **[DataForSEO CLI Guide](README_DATAFORSEO_CLI.md)** - Detailed API usage examples
+- **[API Documentation](docs/api_reference.md)** - Technical API reference
 
-# Lint code
-flake8 src/ tests/
+## 🤝 Contributing
 
-# Type checking
-mypy src/
-```
+We welcome contributions! Please follow these guidelines:
 
-## Contributing
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Write tests for new functionality
+4. Ensure all tests pass (`pytest`)
+5. Format code with Black (`black src/ tests/`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-1. Create a feature branch
-2. Make changes with tests
-3. Ensure all tests pass
-4. Submit pull request
+## 📝 License
 
-## License
+This project is proprietary software. All rights reserved.
 
-[License information here]
+## 💬 Support
 
-## Support
+For support and questions:
+- Create an issue in the repository
+- Check the [User Guide](USER_GUIDE.md) for detailed instructions
+- Review the [troubleshooting section](USER_GUIDE.md#troubleshooting)
 
-For issues or questions, please create an issue in the repository.
+## 🚀 Roadmap
+
+### Upcoming Features
+- [ ] Google Ads API direct integration
+- [ ] Automated bid management
+- [ ] Performance tracking and reporting
+- [ ] A/B testing framework
+- [ ] Machine learning keyword suggestions
+- [ ] Multi-language support
+- [ ] Facebook Ads integration
+- [ ] Microsoft Ads API integration
+
+## 🙏 Acknowledgments
+
+- DataForSEO for comprehensive keyword data
+- FireCrawl for reliable web scraping
+- The open-source Python community
+
+---
+
+**Built with ❤️ for PPC professionals**
